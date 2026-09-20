@@ -1,0 +1,122 @@
+# YellowDocs Package Information for Haiku Package Manager
+# This file defines the package metadata for the YellowDocs application
+
+# Package name
+name = YellowDocs
+
+# Package version (follows semantic versioning)
+version = 0.1.0
+
+# Package revision (incremental for same version)
+revision = 1
+
+# Package architecture (any = works on all architectures)
+architecture = any
+
+# Package vendor
+vendor = YellowOffice Team
+
+# Package URL
+url = https://github.com/YellowOffice/YellowOffice
+
+# Package license
+license = MIT
+
+# Package copyright
+copyright = "Copyright (c) 2024 YellowOffice Contributors"
+
+# Package summary (short description)
+summary = "YellowOffice word processor and document editor"
+
+# Package description (long description)
+description = "YellowDocs is a full-featured word processor and document editor for Haiku OS. It supports rich text editing, paragraph and character formatting, styles, tables, images, and multiple document formats including native YDF, Markdown, and OpenDocument Format (ODF)."
+
+# Package provides (capabilities this package provides)
+provides = {
+    cmd:YellowDocs = 0.1.0
+    app:YellowDocs
+    mime:application/x-vnd.yellowdocs
+    mime:text/x-yellowdocs
+}
+
+# Package requires (dependencies)
+requires = {
+    haiku = r1~beta4
+    libbe.so
+    libtracker.so
+    libbnetapi.so
+    libz.so
+    lib:libYellowDocumentCore.so = 0.1.0
+    lib:libYellowDocumentLayout.so = 0.1.0
+    lib:libYellowImportExport.so = 0.1.0
+    lib:libYellowUI.so = 0.1.0
+    lib:libYellowCommon.so = 0.1.0
+}
+
+# Package supplies (files and directories this package provides)
+supplies = {
+    # Application binary
+    bin/YellowDocs
+    
+    # Application resources
+    app/YellowDocs
+    app/YellowDocs/YellowDocs
+    app/YellowDocs/resources
+    app/YellowDocs/resources/app_icon_16.png
+    app/YellowDocs/resources/app_icon_32.png
+    app/YellowDocs/resources/app_icon_64.png
+    app/YellowDocs/resources/app_icon_128.png
+    app/YellowDocs/resources/app_icon_256.png
+    app/YellowDocs/resources/document_icon_16.png
+    app/YellowDocs/resources/document_icon_32.png
+    app/YellowDocs/resources/document_icon_64.png
+    
+    # MIME type database
+    data/mime/ydf
+    data/mime/YellowDocs
+    
+    # Desktop files
+    apps/YellowDocs
+    
+    # Documentation
+    documentation/YellowDocs
+}
+
+# Package conflicts (packages that cannot be installed together)
+conflicts = {
+}
+
+# Package replaces (packages this one replaces)
+replaces = {
+}
+
+# Package freshen (packages this one updates)
+freshen = {
+}
+
+# Package copyright files
+copyrights = {
+    LICENSE
+}
+
+# Package source URL
+source_url = https://github.com/YellowOffice/YellowOffice
+
+# Package checksum (will be calculated during packaging)
+checksum = none
+
+# Package size (will be calculated during packaging)
+package_size = none
+
+# Package compressed size (will be calculated during packaging)
+compressed_size = none
+
+# Package flags
+flags = {
+}
+
+# Package build info
+build = {
+    compatibility = haiku
+    base_url = https://github.com/YellowOffice/YellowOffice/releases
+}

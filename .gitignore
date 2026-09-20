@@ -1,0 +1,30 @@
+# YellowOffice Git Ignore
+
+# Build directories
+build/
+dist/
+
+# IDE specific files
+.idea/
+.vs/
+*.swp
+*.swo
+
+# Haiku specific
+*.o
+*.so
+*.a
+
+# Package files
+*.hpkg
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS specific
+.DS_Store
+Thumbs.db
