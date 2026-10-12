@@ -1,0 +1,30 @@
+# YellowDocumentLayout Library Jamfile
+# Document layout engine for YellowOffice suite
+
+SubDir HAIKU_TOP ..
+
+UsePrivateHeaders 
+    : $(HAIKU_TOP)/headers/posix
+    : $(HAIKU_TOP)/headers/be
+    : $(HAIKU_TOP)/headers/private
+;
+
+Library libYellowDocumentLayout.so :
+    LayoutEngine.cpp
+    : LayoutEngine.h
+      TextLayouter.h
+      ParagraphLayouter.h
+      PageLayouter.h
+      SelectionManager.h
+      CaretManager.h
+      HitTester.h
+      RenderContext.h
+    : libbe.so
+      libYellowCommon.so
+      libYellowDocumentCore.so
+    : 
+    : 
+    : 
+    : 
+    : 
+;

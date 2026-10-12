@@ -1,0 +1,31 @@
+# YellowUI Library Jamfile
+# Shared UI components for YellowOffice suite
+
+SubDir HAIKU_TOP ..
+
+UsePrivateHeaders 
+    : $(HAIKU_TOP)/headers/posix
+    : $(HAIKU_TOP)/headers/be
+    : $(HAIKU_TOP)/headers/private
+;
+
+Library libYellowUI.so :
+    # Source files will be added when implemented
+    : ActionManager.h
+      CommandSystem.h
+      DialogFactory.h
+      FormattingPanel.h
+      StylePanel.h
+      DocumentNavigator.h
+      StatusBar.h
+      ToolBar.h
+    : libbe.so
+      libtracker.so
+      libYellowCommon.so
+      libYellowDocumentCore.so
+    : 
+    : 
+    : 
+    : 
+    : 
+;

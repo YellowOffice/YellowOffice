@@ -1,0 +1,48 @@
+# YellowDocs Application Jamfile
+# Word processor for YellowOffice suite
+
+SubDir HAIKU_TOP ..
+
+UsePrivateHeaders 
+    : $(HAIKU_TOP)/headers/posix
+    : $(HAIKU_TOP)/headers/be
+    : $(HAIKU_TOP)/headers/private
+;
+
+# Application resources
+resources = 
+    resources/app_icon_16.png
+    resources/app_icon_32.png
+    resources/app_icon_64.png
+    resources/app_icon_128.png
+    resources/app_icon_256.png
+    resources/document_icon_16.png
+    resources/document_icon_32.png
+    resources/document_icon_64.png
+;
+
+Application YellowDocs :
+    YellowDocsApp.cpp
+    YellowDocsWindow.cpp
+    : YellowDocsApp.h
+      YellowDocsWindow.h
+    : libbe.so
+      libtracker.so
+      libYellowCommon.so
+      libYellowDocumentCore.so
+      libYellowDocumentLayout.so
+      libYellowUI.so
+      libYellowImportExport.so
+    : $(resources)
+    : 
+    : 
+    : 
+    : 
+    : 
+;
+
+# Set application signature
+SetAppSignature YellowDocs application/x-vnd.yellowdocs ;
+
+# Set application version
+SetAppVersion 0.1.0 ;

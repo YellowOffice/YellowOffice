@@ -1,0 +1,29 @@
+# YellowOffice Jamfile for Haiku native build system
+# This file defines the build configuration for the YellowOffice suite
+
+SubDir HAIKU_TOP .
+
+# Include subdirectories
+SubInclude libraries/YellowCommon/Jamfile
+SubInclude libraries/YellowDocumentCore/Jamfile
+SubInclude libraries/YellowDocumentLayout/Jamfile
+SubInclude libraries/YellowUI/Jamfile
+SubInclude libraries/YellowImportExport/Jamfile
+SubInclude apps/YellowDocs/Jamfile
+
+# Package creation
+Package YellowOffice :
+    YellowDocs
+    : libYellowCommon.so
+      libYellowDocumentCore.so
+      libYellowDocumentLayout.so
+      libYellowUI.so
+      libYellowImportExport.so
+    : 
+    : libbe.so libtracker.so
+    : 
+    : 
+    : 
+    : 
+    : 
+;

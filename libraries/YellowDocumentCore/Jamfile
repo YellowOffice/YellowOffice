@@ -1,0 +1,26 @@
+# YellowDocumentCore Library Jamfile
+# Core document model for YellowOffice suite
+
+SubDir HAIKU_TOP ..
+
+UsePrivateHeaders 
+    : $(HAIKU_TOP)/headers/posix
+    : $(HAIKU_TOP)/headers/be
+    : $(HAIKU_TOP)/headers/private
+;
+
+Library libYellowDocumentCore.so :
+    DocumentNode.cpp
+    Style.cpp
+    YellowDocument.cpp
+    : DocumentNode.h
+      Style.h
+      YellowDocument.h
+    : libbe.so
+      libYellowCommon.so
+    : 
+    : 
+    : 
+    : 
+    : 
+;

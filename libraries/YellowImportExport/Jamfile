@@ -1,0 +1,34 @@
+# YellowImportExport Library Jamfile
+# Import/export adapters for YellowOffice suite
+
+SubDir HAIKU_TOP ..
+
+UsePrivateHeaders 
+    : $(HAIKU_TOP)/headers/posix
+    : $(HAIKU_TOP)/headers/be
+    : $(HAIKU_TOP)/headers/private
+;
+
+Library libYellowImportExport.so :
+    # Source files will be added when implemented
+    : FormatRegistry.h
+      DocumentFormat.h
+      Importer.h
+      Exporter.h
+      FormatCapabilities.h
+      MarkdownImporter.h
+      MarkdownExporter.h
+      ODFImporter.h
+      ODFExporter.h
+      YDFImporter.h
+      YDFExporter.h
+    : libbe.so
+      libz.so
+      libYellowCommon.so
+      libYellowDocumentCore.so
+    : 
+    : 
+    : 
+    : 
+    : 
+;
