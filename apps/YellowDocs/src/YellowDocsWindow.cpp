@@ -5,6 +5,7 @@
 #include <Box.h>
 #include <Button.h>
 #include <FilePanel.h>
+#include <InterfaceDefs.h>
 #include <LayoutBuilder.h>
 #include <Menu.h>
 #include <MenuBar.h>
@@ -245,7 +246,7 @@ bool YellowDocsWindow::QuitRequested()
             message.SetToFormat("Document '%s' has unsaved changes. Save before closing?", fDocumentPath.String());
         }
         
-        BAlert* alert = new BAlert("Unsaved Changes", message.String(), "Save", "Discard", "Cancel", B_WIDTH_AS_USUAL, B_OFFSET_SPACING, B_WARNING_ALERT);
+        BAlert* alert = new BAlert("Unsaved Changes", message.String(), "Save", "Discard", "Cancel", B_WIDTH_AS_USUAL);
         int32 result = alert->Go();
         
         switch (result) {
@@ -452,8 +453,8 @@ void YellowDocsWindow::InitMenuBar()
     
     // View menu
     BMenu* viewMenu = new BMenu("View");
-    viewMenu->AddItem(new BMenuItem("Zoom In", new BMessage(kMsgViewZoomIn), '+', B_COMMAND_KEY));
-    viewMenu->AddItem(new BMenuItem("Zoom Out", new BMessage(kMsgViewZoomOut), '-', B_COMMAND_KEY));
+    viewMenu->AddItem(new BMenuItem("Zoom In", new BMessage(kMsgViewZoomIn), '+'));
+    viewMenu->AddItem(new BMenuItem("Zoom Out", new BMessage(kMsgViewZoomOut), '-'));
     viewMenu->AddItem(new BMenuItem("Reset Zoom", new BMessage(kMsgViewZoomReset), '0'));
     viewMenu->AddSeparatorItem();
     viewMenu->AddItem(new BMenuItem("Show Toolbar", new BMessage(kMsgViewToggleToolbar)));
@@ -467,9 +468,9 @@ void YellowDocsWindow::InitMenuBar()
     
     // Format menu
     BMenu* formatMenu = new BMenu("Format");
-    formatMenu->AddItem(new BMenuItem("Bold", new BMessage(kMsgFormatBold), 'B', B_COMMAND_KEY));
-    formatMenu->AddItem(new BMenuItem("Italic", new BMessage(kMsgFormatItalic), 'I', B_COMMAND_KEY));
-    formatMenu->AddItem(new BMenuItem("Underline", new BMessage(kMsgFormatUnderline), 'U', B_COMMAND_KEY));
+    formatMenu->AddItem(new BMenuItem("Bold", new BMessage(kMsgFormatBold), 'B'));
+    formatMenu->AddItem(new BMenuItem("Italic", new BMessage(kMsgFormatItalic), 'I'));
+    formatMenu->AddItem(new BMenuItem("Underline", new BMessage(kMsgFormatUnderline), 'U'));
     formatMenu->AddSeparatorItem();
     formatMenu->AddItem(new BMenuItem("Align Left", new BMessage(kMsgFormatAlignLeft)));
     formatMenu->AddItem(new BMenuItem("Align Center", new BMessage(kMsgFormatAlignCenter)));

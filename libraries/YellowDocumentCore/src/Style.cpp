@@ -1,6 +1,8 @@
 #include "YellowDocumentCore/Style.h"
 
+#include <algorithm>
 #include <string.h>
+#include <vector>
 
 namespace YellowDocumentCore {
 
@@ -8,7 +10,7 @@ namespace YellowDocumentCore {
 TextStyle::TextStyle()
     : fontFamily("System"),
       fontSize(12.0f),
-      fontFlags(B_FONT_ALL),
+      fontFlags(0),
       textColor({255, 255, 255, 255}), // White
       backgroundColor({0, 0, 0, 0}), // Transparent
       bold(false),

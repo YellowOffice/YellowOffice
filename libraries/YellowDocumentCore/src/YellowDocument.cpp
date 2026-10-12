@@ -1,6 +1,8 @@
 #include "YellowDocumentCore/YellowDocument.h"
 
+#include <algorithm>
 #include <time.h>
+#include <vector>
 
 namespace YellowDocumentCore {
 

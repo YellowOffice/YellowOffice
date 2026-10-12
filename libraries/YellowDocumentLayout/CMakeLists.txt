@@ -6,7 +6,7 @@ set(LIBRARY_NAME YellowDocumentLayout)
 
 # Source files
 set(SOURCES
-    # Will be added when layout engine is implemented
+    src/LayoutEngine.cpp
 )
 
 # Headers

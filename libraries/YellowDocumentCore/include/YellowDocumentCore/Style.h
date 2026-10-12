@@ -4,6 +4,7 @@
 #include <SupportDefs.h>
 #include <String.h>
 #include <GraphicsDefs.h>
+#include <vector>
 
 #include "Defines.h"
 

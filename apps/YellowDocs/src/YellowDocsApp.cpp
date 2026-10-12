@@ -140,7 +140,7 @@ bool YellowDocsApp::QuitRequested()
             BString message;
             message.SetToFormat("Document in window %ld has unsaved changes. Quit anyway?", i + 1);
             
-            BAlert* alert = new BAlert("Unsaved Changes", message.String(), "Quit", "Cancel", nullptr, B_WIDTH_AS_USUAL, B_OFFSET_SPACING, B_WARNING_ALERT);
+            BAlert* alert = new BAlert("Unsaved Changes", message.String(), "Quit", "Cancel", nullptr, B_WIDTH_AS_USUAL);
             int32 result = alert->Go();
             
             if (result == 1) { // Cancel
