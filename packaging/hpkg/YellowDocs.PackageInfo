@@ -59,24 +59,18 @@ supplies = {
     bin/YellowDocs
     
     # Application resources
-    app/YellowDocs
-    app/YellowDocs/YellowDocs
     app/YellowDocs/resources
-    app/YellowDocs/resources/app_icon_16.png
-    app/YellowDocs/resources/app_icon_32.png
-    app/YellowDocs/resources/app_icon_64.png
-    app/YellowDocs/resources/app_icon_128.png
-    app/YellowDocs/resources/app_icon_256.png
-    app/YellowDocs/resources/document_icon_16.png
-    app/YellowDocs/resources/document_icon_32.png
-    app/YellowDocs/resources/document_icon_64.png
+    
+    # Libraries
+    lib/YellowOffice/libYellowCommon.so
+    lib/YellowOffice/libYellowDocumentCore.so
+    lib/YellowOffice/libYellowDocumentLayout.so
+    lib/YellowOffice/libYellowUI.so
+    lib/YellowOffice/libYellowImportExport.so
     
     # MIME type database
     data/mime/ydf
     data/mime/YellowDocs
-    
-    # Desktop files
-    apps/YellowDocs
     
     # Documentation
     documentation/YellowDocs
