@@ -1,0 +1,103 @@
+/*
+ * YellowDocs Resource Definition File
+ * This file defines application resources for YellowDocs
+ * This is the main resource file that gets compiled and attached to the binary
+ * 
+ * Compile with: rc -o YellowDocs.rsrc YellowDocs.rdef
+ * Then attach to binary with: xres -o YellowDocs YellowDocs.rsrc
+ * 
+ * Or in Jamfile: use ResFile rule
+ */
+
+/* Application Signature - MIME type for the application */
+resource app_signature "application/x-vnd.yellowdocs";
+
+/* Application Version */
+resource app_version {
+    major = 0,
+    middle = 1,
+    minor = 0,
+    variety = B_APPV_FINAL,
+    internal = 0,
+    short_info = "YellowDocs",
+    long_info = "YellowOffice word processor and document editor"
+};
+
+/* Application Flags 
+ * B_SINGLE_LAUNCH: Only one instance can run at a time
+ * B_ARGV_ONLY: Application expects command line arguments
+ */
+resource app_flags B_SINGLE_LAUNCH;
+
+/* File Types - MIME types this application can handle */
+resource BEOS:FILE_TYPES {
+    /* Native Yellow Document Format */
+    { type = "application/x-vnd.yellowdocs.ydf",
+      name = "Yellow Document Format",
+      app = "application/x-vnd.yellowdocs",
+      short_description = "YellowDocs document",
+      long_description = "YellowOffice native document format",
+      preferred_app = "application/x-vnd.yellowdocs",
+      extensions = { "ydf" }
+    },
+    /* Markdown files */
+    { type = "text/x-markdown",
+      name = "Markdown",
+      app = "application/x-vnd.yellowdocs",
+      short_description = "Markdown document",
+      long_description = "Markdown text document",
+      preferred_app = "application/x-vnd.yellowdocs",
+      extensions = { "md", "markdown" }
+    },
+    /* OpenDocument Text */
+    { type = "application/vnd.oasis.opendocument.text",
+      name = "OpenDocument Text",
+      app = "application/x-vnd.yellowdocs",
+      short_description = "ODF text document",
+      long_description = "OpenDocument Format text document",
+      preferred_app = "application/x-vnd.yellowdocs",
+      extensions = { "odt" }
+    },
+    /* Plain text files */
+    { type = "text/plain",
+      name = "Plain Text",
+      app = "application/x-vnd.yellowdocs",
+      short_description = "Text document",
+      long_description = "Plain text document",
+      preferred_app = "application/x-vnd.yellowdocs",
+      extensions = { "txt" }
+    }
+};
+
+/* Vector Icon - Placeholder for application icon
+ * Replace the data below with actual HVIF icon data from Icon-O-Matic
+ * 
+ * To create: 
+ * 1. Open Icon-O-Matic
+ * 2. Create/design your icon
+ * 3. Save as HVIF RDEF
+ * 4. Copy the vector_icon resource data here
+ */
+/*
+resource vector_icon {
+    /* HVIF icon data would go here */
+    size = 64
+    data = {
+        /* Actual HVIF data from Icon-O-Matic */
+    }
+};
+*/
+
+/* Small icon (16x16) - Placeholder */
+/*
+resource(101) 'VICN' {
+    /* Icon data would go here */
+};
+*/
+
+/* Large icon (32x32) - Placeholder */
+/*
+resource(102) 'VICN' {
+    /* Icon data would go here */
+};
+*/

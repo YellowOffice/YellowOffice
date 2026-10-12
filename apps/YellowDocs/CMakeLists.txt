@@ -18,6 +18,7 @@ set(HEADERS
 
 # Resources
 set(RESOURCES
+    resources/YellowDocs.rdef
     resources/app_icon_16.png
     resources/app_icon_32.png
     resources/app_icon_64.png

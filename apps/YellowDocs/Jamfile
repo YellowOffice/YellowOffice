@@ -10,7 +10,8 @@ UsePrivateHeaders
 ;
 
 # Application resources
-resources = 
+RESOURCES = 
+    resources/YellowDocs.rdef
     resources/app_icon_16.png
     resources/app_icon_32.png
     resources/app_icon_64.png
@@ -21,6 +22,10 @@ resources =
     resources/document_icon_64.png
 ;
 
+# Compile resource file
+ResFile YellowDocs.rsrc : YellowDocs.rdef $(RESOURCES:S=resources/=) ;
+
+# Application binary
 Application YellowDocs :
     YellowDocsApp.cpp
     YellowDocsWindow.cpp
@@ -33,7 +38,7 @@ Application YellowDocs :
       libYellowDocumentLayout.so
       libYellowUI.so
       libYellowImportExport.so
-    : $(resources)
+    : YellowDocs.rsrc
     : 
     : 
     : 
@@ -46,3 +51,6 @@ SetAppSignature YellowDocs application/x-vnd.yellowdocs ;
 
 # Set application version
 SetAppVersion 0.1.0 ;
+
+# Set application flags for single launch
+SetAppFlags B_SINGLE_LAUNCH ;
