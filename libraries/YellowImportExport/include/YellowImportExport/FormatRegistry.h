@@ -16,6 +16,9 @@ public:
     FormatRegistry();
     ~FormatRegistry();
 
+    /// Registers the built-in formats: YDF, Markdown, Plain Text, ODF.
+    static FormatRegistry* CreateDefault();
+
     // Register formats
     void RegisterFormat(const DocumentFormat* format);
     void UnregisterFormat(const char* mimeType);

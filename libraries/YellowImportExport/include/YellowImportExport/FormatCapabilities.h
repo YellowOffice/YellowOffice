@@ -5,6 +5,21 @@
 
 namespace YellowImportExport {
 
+enum FormatFeature {
+    FEATURE_TEXT = 0,
+    FEATURE_FORMATTING,
+    FEATURE_STYLES,
+    FEATURE_TABLES,
+    FEATURE_IMAGES,
+    FEATURE_EMBEDDED_OBJECTS,
+    FEATURE_HEADERS_FOOTERS,
+    FEATURE_PAGE_LAYOUT,
+    FEATURE_METADATA,
+    FEATURE_COMMENTS,
+    FEATURE_TRACK_CHANGES,
+    FEATURE_FEATURE_COUNT
+};
+
 class FormatCapabilities {
 public:
     FormatCapabilities();
@@ -25,6 +40,7 @@ public:
 
     // Check if format supports a feature
     bool SupportsFeature(uint32 feature) const;
+    void SetFeature(uint32 feature, bool supported);
 };
 
 } // namespace YellowImportExport

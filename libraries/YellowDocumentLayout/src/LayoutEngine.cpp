@@ -1,12 +1,4 @@
-#include "YellowDocumentLayout/LayoutEngine.h"
-
-// Forward declarations for YellowDocumentCore types
-namespace YellowDocumentCore {
-    class YellowDocument;
-    class DocumentNode;
-    class DocumentRange;
-    class DocumentPosition;
-}
+#include <YellowDocumentLayout/LayoutEngine.h>
 
 namespace YellowDocumentLayout {
 
@@ -43,7 +35,7 @@ LayoutRegion& LayoutRegion::operator=(const LayoutRegion& other)
 
 bool LayoutRegion::operator==(const LayoutRegion& other) const
 {
-    return left == other.left && top == other.top && 
+    return left == other.left && top == other.top &&
            right == other.right && bottom == other.bottom;
 }
 
@@ -72,7 +64,7 @@ bool LayoutRegion::IsValid() const
 
 bool LayoutRegion::Contains(const BPoint& point) const
 {
-    return point.x >= left && point.x <= right && 
+    return point.x >= left && point.x <= right &&
            point.y >= top && point.y <= bottom;
 }
 
@@ -110,49 +102,48 @@ LayoutPass::~LayoutPass()
 }
 
 // LayoutEngine implementation
-LayoutEngine::LayoutEngine(YellowDocumentCore::YellowDocument* document)
+LayoutEngine::LayoutEngine(YellowDocument* document)
     : fDocument(document),
-      fTextLayouter(nullptr),
-      fParagraphLayouter(nullptr),
-      fPageLayouter(nullptr),
-      fSelectionManager(nullptr),
-      fCaretManager(nullptr),
-      fHitTester(nullptr),
-      fRenderContext(nullptr),
-      fViewportSize(0, 0),
+      fFontCache(new FontCache()),
+      fTextLayouter(new TextLayouter(this)),
+      fParagraphLayouter(new ParagraphLayouter(fTextLayouter)),
+      fPageLayouter(new PageLayouter(this, fParagraphLayouter)),
+      fSelectionManager(new SelectionManager()),
+      fCaretManager(new CaretManager(this)),
+      fHitTester(new HitTester(this)),
+      fRenderContext(new RenderContext(this)),
+      fViewportSize(612, 792),
       fZoomLevel(1.0f),
       fScrollPosition(0, 0),
       fLayoutValid(false),
       fDocumentSize(0, 0),
-      fOwnComponents(true)
+      fPageCount(0)
 {
 }
 
 LayoutEngine::~LayoutEngine()
 {
-    // Clean up components if we own them
-    if (fOwnComponents) {
-        delete fTextLayouter;
-        delete fParagraphLayouter;
-        delete fPageLayouter;
-        delete fSelectionManager;
-        delete fCaretManager;
-        delete fHitTester;
-        delete fRenderContext;
-    }
+    delete fFontCache;
+    delete fTextLayouter;
+    delete fParagraphLayouter;
+    delete fPageLayouter;
+    delete fSelectionManager;
+    delete fCaretManager;
+    delete fHitTester;
+    delete fRenderContext;
 }
 
-YellowDocumentCore::YellowDocument* LayoutEngine::GetDocument()
+YellowDocument* LayoutEngine::GetDocument()
 {
     return fDocument;
 }
 
-const YellowDocumentCore::YellowDocument* LayoutEngine::GetDocument() const
+const YellowDocument* LayoutEngine::GetDocument() const
 {
     return fDocument;
 }
 
-void LayoutEngine::SetDocument(YellowDocumentCore::YellowDocument* document)
+void LayoutEngine::SetDocument(YellowDocument* document)
 {
     fDocument = document;
     fLayoutValid = false;
@@ -193,6 +184,11 @@ RenderContext* LayoutEngine::GetRenderContext()
     return fRenderContext;
 }
 
+FontCache* LayoutEngine::GetFontCache()
+{
+    return fFontCache;
+}
+
 void LayoutEngine::LayoutDocument()
 {
     LayoutPass pass;
@@ -201,18 +197,25 @@ void LayoutEngine::LayoutDocument()
 
 void LayoutEngine::LayoutDocument(const LayoutPass& pass)
 {
-    // TODO: Implement layout
-    fLayoutValid = false;
+    (void)pass;
+    if (!fDocument) {
+        fLayoutValid = false;
+        return;
+    }
+    fPageLayouter->LayoutDocument(fDocument);
+    fLayoutValid = true;
 }
 
-void LayoutEngine::LayoutNode(YellowDocumentCore::DocumentNode* node)
+void LayoutEngine::LayoutNode(DocumentNode* node)
 {
-    // TODO: Implement node layout
+    (void)node;
+    InvalidateLayout();
 }
 
-void LayoutEngine::LayoutRange(const YellowDocumentCore::DocumentRange& range)
+void LayoutEngine::LayoutRange(const DocumentRange& range)
 {
-    // TODO: Implement range layout
+    (void)range;
+    InvalidateLayout();
 }
 
 void LayoutEngine::InvalidateLayout()
@@ -220,22 +223,30 @@ void LayoutEngine::InvalidateLayout()
     fLayoutValid = false;
 }
 
-void LayoutEngine::InvalidateNode(YellowDocumentCore::DocumentNode* node)
+void LayoutEngine::InvalidateNode(DocumentNode* node)
 {
-    // TODO: Implement node invalidation
+    (void)node;
     fLayoutValid = false;
 }
 
-void LayoutEngine::InvalidateRange(const YellowDocumentCore::DocumentRange& range)
+void LayoutEngine::InvalidateRange(const DocumentRange& range)
 {
-    // TODO: Implement range invalidation
+    (void)range;
     fLayoutValid = false;
 }
 
 void LayoutEngine::InvalidateRegion(const LayoutRegion& region)
 {
-    // TODO: Implement region invalidation
+    (void)region;
     fLayoutValid = false;
+}
+
+bool LayoutEngine::EnsureLayout()
+{
+    if (!fLayoutValid) {
+        LayoutDocument();
+    }
+    return fLayoutValid;
 }
 
 void LayoutEngine::SetViewportSize(const BSize& size)
@@ -250,6 +261,8 @@ BSize LayoutEngine::GetViewportSize() const
 
 void LayoutEngine::SetZoomLevel(float zoom)
 {
+    if (zoom < 0.1f) zoom = 0.1f;
+    if (zoom > 8.0f) zoom = 8.0f;
     fZoomLevel = zoom;
 }
 
@@ -270,39 +283,49 @@ BPoint LayoutEngine::GetScrollPosition() const
 
 BRect LayoutEngine::GetVisibleRect() const
 {
-    return BRect(fScrollPosition, fScrollPosition + fViewportSize);
+    BPoint bottomRight(fScrollPosition.x + fViewportSize.width / fZoomLevel,
+                       fScrollPosition.y + fViewportSize.height / fZoomLevel);
+    return BRect(fScrollPosition, bottomRight);
 }
 
 void LayoutEngine::RenderDocument(BView* view, const BRect& updateRect)
 {
-    // TODO: Implement rendering
+    EnsureLayout();
+    fRenderContext->RenderDocument(view, updateRect);
 }
 
-void LayoutEngine::RenderNode(BView* view, YellowDocumentCore::DocumentNode* node, const BRect& bounds)
+void LayoutEngine::RenderNode(BView* view, DocumentNode* node, const BRect& bounds)
 {
-    // TODO: Implement node rendering
+    (void)node;
+    // Full-document rendering is the supported path; node-level rendering
+    // reuses the paragraph cache.
+    fRenderContext->RenderDocument(view, bounds);
 }
 
-YellowDocumentCore::DocumentNode* LayoutEngine::HitTest(const BPoint& point)
+DocumentNode* LayoutEngine::HitTest(const BPoint& point)
 {
-    return nullptr; // TODO: Implement hit testing
+    EnsureLayout();
+    BPoint documentPoint = ViewToDocument(point);
+    return fHitTester->HitTestParagraph(documentPoint);
 }
 
-YellowDocumentCore::DocumentPosition LayoutEngine::HitTestPosition(const BPoint& point)
+DocumentPosition LayoutEngine::HitTestPosition(const BPoint& point)
 {
-    return YellowDocumentCore::DocumentPosition(); // TODO: Implement position hit testing
+    EnsureLayout();
+    BPoint documentPoint = ViewToDocument(point);
+    return fHitTester->HitTest(documentPoint);
 }
 
 BPoint LayoutEngine::DocumentToView(const BPoint& documentPoint) const
 {
-    return BPoint(documentPoint.x * fZoomLevel - fScrollPosition.x,
-                  documentPoint.y * fZoomLevel - fScrollPosition.y);
+    return BPoint((documentPoint.x - fScrollPosition.x) * fZoomLevel,
+                  (documentPoint.y - fScrollPosition.y) * fZoomLevel);
 }
 
 BPoint LayoutEngine::ViewToDocument(const BPoint& viewPoint) const
 {
-    return BPoint((viewPoint.x + fScrollPosition.x) / fZoomLevel,
-                  (viewPoint.y + fScrollPosition.y) / fZoomLevel);
+    return BPoint(viewPoint.x / fZoomLevel + fScrollPosition.x,
+                  viewPoint.y / fZoomLevel + fScrollPosition.y);
 }
 
 BRect LayoutEngine::DocumentToView(const BRect& documentRect) const
@@ -326,12 +349,85 @@ BSize LayoutEngine::GetDocumentSize() const
 
 BSize LayoutEngine::GetPageSize() const
 {
-    return BSize(8.5f * 72.0f, 11.0f * 72.0f); // Default page size in points
+    SectionNode* section = GetSection();
+    if (section) {
+        return BSize(section->pageWidth, section->pageHeight);
+    }
+    return BSize(8.5f * 72.0f, 11.0f * 72.0f);
 }
 
 int32 LayoutEngine::GetPageCount() const
 {
-    return 1; // TODO: Implement page count
+    return fPageCount;
+}
+
+const std::vector<ParagraphLayout>& LayoutEngine::GetParagraphs() const
+{
+    return fParagraphs;
+}
+
+std::vector<ParagraphLayout>& LayoutEngine::GetParagraphs()
+{
+    return fParagraphs;
+}
+
+const std::vector<PlacedImage>& LayoutEngine::GetImages() const
+{
+    return fImages;
+}
+
+std::vector<PlacedImage>& LayoutEngine::GetImages()
+{
+    return fImages;
+}
+
+const std::vector<PlacedTable>& LayoutEngine::GetTables() const
+{
+    return fTables;
+}
+
+std::vector<PlacedTable>& LayoutEngine::GetTables()
+{
+    return fTables;
+}
+
+const std::vector<PageInfo>& LayoutEngine::GetPages() const
+{
+    return fPages;
+}
+
+std::vector<PageInfo>& LayoutEngine::GetPages()
+{
+    return fPages;
+}
+
+const ParagraphLayout* LayoutEngine::GetParagraphLayout(ParagraphNode* paragraph) const
+{
+    for (const ParagraphLayout& layout : fParagraphs) {
+        if (layout.paragraph == paragraph) {
+            return &layout;
+        }
+    }
+    return nullptr;
+}
+
+void LayoutEngine::FinishLayout(int32 pageCount, const BSize& documentSize)
+{
+    fPageCount = pageCount;
+    fDocumentSize = documentSize;
+    fLayoutValid = true;
+}
+
+SectionNode* LayoutEngine::GetSection() const
+{
+    if (!fDocument) return nullptr;
+    SectionNode* section = fDocument->GetRootSection();
+    if (section) return section;
+    // Fallback: search for the first section in the tree.
+    DocumentNode* node = fDocument->GetRoot();
+    // Sections are only at the root level in this model.
+    (void)node;
+    return nullptr;
 }
 
 } // namespace YellowDocumentLayout

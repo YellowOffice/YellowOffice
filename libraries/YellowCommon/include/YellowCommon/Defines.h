@@ -18,6 +18,10 @@
 #define YDF_FORMAT_EXTENSION "ydf"
 #define YDF_MIME_TYPE "application/x-vnd.yellowdocs.ydf"
 
+#define ODF_FORMAT_NAME "OpenDocument Text"
+#define ODF_FORMAT_EXTENSION "odt"
+#define ODF_MIME_TYPE "application/vnd.oasis.opendocument.text"
+
 // Message defines
 #define YELLOW_MSG_BASE 'YELW'
 

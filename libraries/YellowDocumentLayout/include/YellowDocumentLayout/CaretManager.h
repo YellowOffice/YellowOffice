@@ -1,41 +1,43 @@
 #ifndef YELLOW_DOCUMENT_LAYOUT_CARET_MANAGER_H
 #define YELLOW_DOCUMENT_LAYOUT_CARET_MANAGER_H
 
-#include <SupportDefs.h>
-#include <Point.h>
-
-namespace YellowDocumentCore {
-    class DocumentPosition;
-}
+#include <YellowDocumentLayout/LayoutTypes.h>
 
 namespace YellowDocumentLayout {
 
+class LayoutEngine;
+
+/**
+ * CaretManager tracks the insertion caret position and visibility.
+ */
 class CaretManager {
 public:
-    CaretManager();
+    explicit CaretManager(LayoutEngine* engine);
     ~CaretManager();
 
-    // Caret operations
-    void SetCaretPosition(const YellowDocumentCore::DocumentPosition& position);
-    YellowDocumentCore::DocumentPosition GetCaretPosition() const;
-    
-    // Caret visibility
-    void ShowCaret();
-    void HideCaret();
-    bool IsCaretVisible() const;
-    
-    // Caret drawing
-    void DrawCaret(BView* view, const BPoint& position);
-    
-    // Blink timer
-    void StartBlinking();
-    void StopBlinking();
+    const DocumentPosition& GetPosition() const;
+    void SetPosition(const DocumentPosition& position);
+
+    bool IsVisible() const;
+    void SetVisible(bool visible);
+    void ToggleVisible();
+
+    /// Caret x within the view for the current position (invalid position
+    /// yields BPoint(-1, -1)).
+    BPoint GetViewPoint() const;
+
+    /// Simple caret motion.
+    void MoveLeft();
+    void MoveRight();
+    void MoveToLineStart();
+    void MoveToLineEnd();
 
 private:
+    LayoutEngine* fEngine;
+    DocumentPosition fPosition;
     bool fVisible;
-    bool fBlinking;
 };
 
 } // namespace YellowDocumentLayout
 
-#endif // YELLOW_DOCUMENT_LAYOUT_CARET_MANAGER_H
+#endif

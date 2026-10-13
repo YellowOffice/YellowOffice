@@ -40,30 +40,79 @@ bool DocumentPosition::operator!=(const DocumentPosition& other) const
     return !(*this == other);
 }
 
+namespace {
+
+// Compares two nodes by document tree order (a node precedes its
+// descendants; siblings compare by child index; unrelated roots compare by
+// pointer address as a stable fallback).
+int CompareNodesInTree(DocumentNode* a, DocumentNode* b)
+{
+    if (a == b) return 0;
+    if (a == nullptr) return -1;
+    if (b == nullptr) return 1;
+
+    DocumentNode* parentA = a->GetParent();
+    DocumentNode* parentB = b->GetParent();
+
+    if (parentA == nullptr && parentB == nullptr) {
+        return a < b ? -1 : 1;
+    }
+    if (parentA == nullptr) {
+        // a is either an ancestor of b or an unrelated root.
+        return CompareNodesInTree(a, parentB) <= 0 ? -1 : 1;
+    }
+    if (parentB == nullptr) {
+        return CompareNodesInTree(parentA, b) >= 0 ? 1 : -1;
+    }
+
+    int parentOrder = CompareNodesInTree(parentA, parentB);
+    if (parentOrder != 0) {
+        return parentOrder;
+    }
+    size_t indexA = parentA->GetIndexOf(a);
+    size_t indexB = parentB->GetIndexOf(b);
+    if (indexA < indexB) return -1;
+    if (indexA > indexB) return 1;
+    return 0;
+}
+
+} // namespace
+
+int DocumentPosition::CompareInTree(const DocumentPosition& a, const DocumentPosition& b)
+{
+    if (a.fNode == b.fNode) {
+        if (a.fOffset < b.fOffset) return -1;
+        if (a.fOffset > b.fOffset) return 1;
+        return 0;
+    }
+    int nodeOrder = CompareNodesInTree(a.fNode, b.fNode);
+    if (nodeOrder != 0) {
+        return nodeOrder;
+    }
+    // Same node reached differently (shouldn't happen), compare offsets.
+    if (a.fOffset < b.fOffset) return -1;
+    if (a.fOffset > b.fOffset) return 1;
+    return 0;
+}
+
 bool DocumentPosition::operator<(const DocumentPosition& other) const
 {
-    // Simple comparison - could be enhanced with document tree traversal
-    if (fNode == other.fNode) {
-        return fOffset < other.fOffset;
-    }
-    // For different nodes, we'd need to compare their positions in the tree
-    // For now, just compare pointer addresses (not ideal, but works for basic cases)
-    return fNode < other.fNode;
+    return CompareInTree(*this, other) < 0;
 }
 
 bool DocumentPosition::operator<=(const DocumentPosition& other) const
 {
-    return *this < other || *this == other;
+    return CompareInTree(*this, other) <= 0;
 }
 
 bool DocumentPosition::operator>(const DocumentPosition& other) const
 {
-    return !(*this <= other);
+    return CompareInTree(*this, other) > 0;
 }
 
 bool DocumentPosition::operator>=(const DocumentPosition& other) const
 {
-    return !(*this < other);
+    return CompareInTree(*this, other) >= 0;
 }
 
 DocumentNode* DocumentPosition::GetNode() const
@@ -95,6 +144,85 @@ void DocumentPosition::Invalidate()
 {
     fNode = nullptr;
     fOffset = -1;
+}
+
+DocumentPosition DocumentPosition::NextPosition() const
+{
+    if (!IsValid()) return DocumentPosition();
+
+    DocumentNode* node = fNode;
+    int32 offset = fOffset;
+
+    // Move within the current text-bearing node if possible.
+    if (node->GetType() == NODE_TYPE_TEXT_RUN || node->GetTextLength() > 0) {
+        int32 length = node->GetTextLength();
+        if (offset < length) {
+            return DocumentPosition(node, offset + 1);
+        }
+    }
+
+    // Move to the next text-bearing node in document order.
+    DocumentNode* current = node;
+    while (current != nullptr) {
+        DocumentNode* parent = current->GetParent();
+        if (parent == nullptr) return DocumentPosition();
+        size_t index = parent->GetIndexOf(current);
+        for (size_t i = index + 1; i < parent->GetChildCount(); ++i) {
+            DocumentNode* sibling = parent->GetChild(i);
+            if (sibling == nullptr) continue;
+            if (sibling->GetTextLength() > 0 ||
+                sibling->GetType() == NODE_TYPE_PARAGRAPH) {
+                // Descend to first leaf.
+                DocumentNode* leaf = sibling;
+                while (leaf->GetChildCount() > 0 &&
+                       leaf->GetType() != NODE_TYPE_TEXT_RUN) {
+                    leaf = leaf->GetChild(0);
+                }
+                if (leaf->GetType() == NODE_TYPE_TEXT_RUN) {
+                    return DocumentPosition(leaf, 0);
+                }
+            }
+        }
+        current = parent;
+    }
+    return DocumentPosition();
+}
+
+DocumentPosition DocumentPosition::PreviousPosition() const
+{
+    if (!IsValid()) return DocumentPosition();
+
+    DocumentNode* node = fNode;
+    int32 offset = fOffset;
+
+    if (offset > 0) {
+        return DocumentPosition(node, offset - 1);
+    }
+
+    // Move to the previous text-bearing node.
+    DocumentNode* current = node;
+    while (current != nullptr) {
+        DocumentNode* parent = current->GetParent();
+        if (parent == nullptr) return DocumentPosition();
+        size_t index = parent->GetIndexOf(current);
+        for (size_t i = index; i-- > 0; ) {
+            DocumentNode* sibling = parent->GetChild(i);
+            if (sibling == nullptr) continue;
+            if (sibling->GetTextLength() > 0) {
+                // Descend to last leaf.
+                DocumentNode* leaf = sibling;
+                while (leaf->GetChildCount() > 0 &&
+                       leaf->GetType() != NODE_TYPE_TEXT_RUN) {
+                    leaf = leaf->GetChild(leaf->GetChildCount() - 1);
+                }
+                if (leaf->GetType() == NODE_TYPE_TEXT_RUN) {
+                    return DocumentPosition(leaf, leaf->GetTextLength());
+                }
+            }
+        }
+        current = parent;
+    }
+    return DocumentPosition();
 }
 
 // DocumentRange implementation
@@ -149,6 +277,15 @@ void DocumentRange::SetEnd(const DocumentPosition& end)
     fEnd = end;
 }
 
+void DocumentRange::Normalize()
+{
+    if (fStart > fEnd) {
+        DocumentPosition temp = fStart;
+        fStart = fEnd;
+        fEnd = temp;
+    }
+}
+
 bool DocumentRange::IsValid() const
 {
     return fStart.IsValid() && fEnd.IsValid();
@@ -167,14 +304,20 @@ bool DocumentRange::Contains(const DocumentPosition& position) const
 // DocumentNode implementation
 DocumentNode::DocumentNode(NodeType type)
     : fType(type),
-      fParent(nullptr)
+      fParent(nullptr),
+      fDocument(nullptr)
 {
 }
 
 DocumentNode::~DocumentNode()
 {
-    // Remove all children
-    RemoveAllChildren();
+    for (DocumentNode* child : fChildren) {
+        if (child) {
+            child->fParent = nullptr;
+            delete child;
+        }
+    }
+    fChildren.clear();
 }
 
 NodeType DocumentNode::GetType() const
@@ -208,16 +351,29 @@ DocumentNode* DocumentNode::GetChild(size_t index) const
 void DocumentNode::AddChild(DocumentNode* child)
 {
     if (child && child != this) {
+        // Detach from previous parent.
+        if (child->fParent) {
+            child->fParent->RemoveChild(child);
+        }
         fChildren.push_back(child);
-        child->SetParent(this);
+        child->fParent = this;
+        if (fDocument) {
+            child->SetDocument(fDocument);
+        }
     }
 }
 
 void DocumentNode::InsertChild(size_t index, DocumentNode* child)
 {
     if (child && child != this && index <= fChildren.size()) {
+        if (child->fParent) {
+            child->fParent->RemoveChild(child);
+        }
         fChildren.insert(fChildren.begin() + index, child);
-        child->SetParent(this);
+        child->fParent = this;
+        if (fDocument) {
+            child->SetDocument(fDocument);
+        }
     }
 }
 
@@ -244,7 +400,9 @@ void DocumentNode::RemoveChild(DocumentNode* child)
 void DocumentNode::RemoveAllChildren()
 {
     for (DocumentNode* child : fChildren) {
-        child->SetParent(nullptr);
+        if (child) {
+            child->SetParent(nullptr);
+        }
     }
     fChildren.clear();
 }
@@ -266,47 +424,65 @@ bool DocumentNode::Contains(const DocumentNode* child) const
     if (!child) {
         return false;
     }
-    
-    // Check direct children
+
     for (DocumentNode* c : fChildren) {
-        if (c == child) {
+        if (c == child || (c && c->Contains(child))) {
             return true;
         }
     }
-    
-    // Check recursively
-    for (DocumentNode* c : fChildren) {
-        if (c->Contains(child)) {
-            return true;
-        }
-    }
-    
     return false;
 }
 
 YellowDocument* DocumentNode::GetDocument()
 {
-    return nullptr; // Default implementation - should be overridden by YellowDocument
+    return fDocument;
 }
 
 const YellowDocument* DocumentNode::GetDocument() const
 {
-    return nullptr; // Default implementation - should be overridden by YellowDocument
+    return fDocument;
+}
+
+void DocumentNode::SetDocument(YellowDocument* document)
+{
+    fDocument = document;
+    for (DocumentNode* child : fChildren) {
+        if (child) {
+            child->SetDocument(document);
+        }
+    }
+}
+
+YellowDocument* DocumentNode::GetOwningDocument() const
+{
+    const DocumentNode* node = this;
+    while (node) {
+        if (node->fDocument) {
+            return node->fDocument;
+        }
+        node = node->fParent;
+    }
+    return nullptr;
+}
+
+void DocumentNode::PropagateDocument(YellowDocument* document)
+{
+    SetDocument(document);
 }
 
 BString DocumentNode::GetText() const
 {
-    return BString(); // Default implementation - empty string
+    return BString();
 }
 
 void DocumentNode::SetText(const BString& text)
 {
-    // Default implementation - do nothing
+    (void)text;
 }
 
 int32 DocumentNode::GetTextLength() const
 {
-    return 0; // Default implementation - no text
+    return 0;
 }
 
 DocumentPosition DocumentNode::GetStartPosition() const

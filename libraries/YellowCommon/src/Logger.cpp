@@ -6,12 +6,10 @@
 
 namespace YellowCommon {
 
-// Global logger instance
 Logger* Logger::sGlobalLogger = nullptr;
 
-// Logger implementation
 Logger::Logger(const char* name)
-    : fLevel(YELLOW_LOG_INFO)
+    : fLevel(LOG_INFO)
 {
     if (name) {
         fName = name;
@@ -22,7 +20,6 @@ Logger::Logger(const char* name)
 
 Logger::~Logger()
 {
-    // Don't delete global logger here
 }
 
 void Logger::SetLevel(Level level)
@@ -49,34 +46,42 @@ const char* Logger::GetName() const
 
 void Logger::Log(Level level, const char* format, ...) const
 {
-    if (level < fLevel) {
+    if (level < fLevel || !format) {
+        return;
+    }
+
+    va_list args;
+    va_start(args, format);
+    LogV(level, format, args);
+    va_end(args);
+}
+
+void Logger::LogV(Level level, const char* format, va_list args) const
+{
+    if (level < fLevel || !format) {
         return;
     }
 
     const char* levelStr = "";
     switch (level) {
-        case DEBUG:
+        case LOG_DEBUG:
             levelStr = "[DEBUG]";
             break;
-        case INFO:
+        case LOG_INFO:
             levelStr = "[INFO]";
             break;
-        case WARNING:
+        case LOG_WARNING:
             levelStr = "[WARNING]";
             break;
-        case ERROR:
+        case LOG_ERROR:
             levelStr = "[ERROR]";
             break;
     }
 
-    fprintf(stderr, "%s [%s] ", levelStr, fName.String());
-    
-    va_list args;
-    va_start(args, format);
-    vfprintf(stderr, format, args);
-    va_end(args);
-    
-    fprintf(stderr, "\n");
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), format, args);
+
+    fprintf(stderr, "%s [%s] %s\n", levelStr, fName.String(), buffer);
     fflush(stderr);
 }
 
@@ -84,7 +89,7 @@ void Logger::Debug(const char* format, ...) const
 {
     va_list args;
     va_start(args, format);
-    Log(DEBUG, format, args);
+    LogV(LOG_DEBUG, format, args);
     va_end(args);
 }
 
@@ -92,7 +97,7 @@ void Logger::Info(const char* format, ...) const
 {
     va_list args;
     va_start(args, format);
-    Log(INFO, format, args);
+    LogV(LOG_INFO, format, args);
     va_end(args);
 }
 
@@ -100,7 +105,7 @@ void Logger::Warning(const char* format, ...) const
 {
     va_list args;
     va_start(args, format);
-    Log(WARNING, format, args);
+    LogV(LOG_WARNING, format, args);
     va_end(args);
 }
 
@@ -108,7 +113,7 @@ void Logger::Error(const char* format, ...) const
 {
     va_list args;
     va_start(args, format);
-    Log(ERROR, format, args);
+    LogV(LOG_ERROR, format, args);
     va_end(args);
 }
 
@@ -123,6 +128,12 @@ Logger& Logger::GetGlobalLogger()
 void Logger::SetGlobalLevel(Level level)
 {
     GetGlobalLogger().SetLevel(level);
+}
+
+void Logger::DeleteGlobalLogger()
+{
+    delete sGlobalLogger;
+    sGlobalLogger = nullptr;
 }
 
 } // namespace YellowCommon

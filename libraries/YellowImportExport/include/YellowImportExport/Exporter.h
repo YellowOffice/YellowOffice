@@ -1,5 +1,5 @@
 #ifndef YELLOW_IMPORT_EXPORT_EXPORTER_H
-#define YELLOW_IMPORT_EXPORTER_H
+#define YELLOW_IMPORT_EXPORT_EXPORTER_H
 
 #include <SupportDefs.h>
 #include <String.h>

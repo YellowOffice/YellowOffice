@@ -252,9 +252,9 @@ StyleDefinition::StyleDefinition(const BString& name, const TextStyle& textStyle
                                    const ParagraphStyle& paragraphStyle)
     : name(name),
       displayName(name),
-      type(STYLE_TYPE_PARAGRAPH),
       textStyle(textStyle),
-      paragraphStyle(paragraphStyle)
+      paragraphStyle(paragraphStyle),
+      type(STYLE_TYPE_PARAGRAPH)
 {
 }
 

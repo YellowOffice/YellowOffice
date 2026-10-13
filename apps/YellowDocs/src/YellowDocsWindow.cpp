@@ -1,552 +1,585 @@
 #include "YellowDocsWindow.h"
+#include "DocumentCanvas.h"
 
-#include <Alert.h>
-#include <Application.h>
-#include <Box.h>
-#include <Button.h>
-#include <FilePanel.h>
-#include <InterfaceDefs.h>
-#include <LayoutBuilder.h>
-#include <Menu.h>
 #include <MenuBar.h>
+#include <Menu.h>
 #include <MenuItem.h>
-#include <Message.h>
-#include <Path.h>
-#include <Screen.h>
-#include <SeparatorView.h>
+#include <ScrollView.h>
 #include <StatusBar.h>
-#include <String.h>
-#include <ToolBar.h>
-#include <View.h>
+#include <FilePanel.h>
+#include <Entry.h>
+#include <Path.h>
+#include <Alert.h>
+#include <Message.h>
+#include <InterfaceDefs.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
-#include <YellowCommon/Logger.h>
+#include <YellowUI/ToolBar.h>
 #include <YellowDocumentCore/YellowDocument.h>
+#include <YellowImportExport/YDFImporter.h>
+#include <YellowImportExport/YDFExporter.h>
+#include <YellowImportExport/MarkdownImporter.h>
+#include <YellowImportExport/MarkdownExporter.h>
+#include <YellowImportExport/PlainText.h>
+#include <YellowImportExport/ODFImporter.h>
+#include <YellowImportExport/ODFExporter.h>
 
-// Message constants
-const uint32 YellowDocsWindow::kMsgFileNew = 'YDfnew';
-const uint32 YellowDocsWindow::kMsgFileOpen = 'YDfopn';
-const uint32 YellowDocsWindow::kMsgFileSave = 'YDfsav';
-const uint32 YellowDocsWindow::kMsgFileSaveAs = 'YDfsva';
-const uint32 YellowDocsWindow::kMsgFileClose = 'YDfcls';
-const uint32 YellowDocsWindow::kMsgFileQuit = 'YDfqu';
+using namespace YellowDocumentCore;
+using namespace YellowImportExport;
 
-const uint32 YellowDocsWindow::kMsgEditUndo = 'YDedun';
-const uint32 YellowDocsWindow::kMsgEditRedo = 'YDedre';
-const uint32 YellowDocsWindow::kMsgEditCut = 'YDedcu';
-const uint32 YellowDocsWindow::kMsgEditCopy = 'YDedco';
-const uint32 YellowDocsWindow::kMsgEditPaste = 'YDedpa';
-const uint32 YellowDocsWindow::kMsgEditSelectAll = 'YDedsa';
-const uint32 YellowDocsWindow::kMsgEditFind = 'YDedfi';
-const uint32 YellowDocsWindow::kMsgEditReplace = 'YDedre';
+// ------------------------------------------------------------- message constants
 
-const uint32 YellowDocsWindow::kMsgViewZoomIn = 'YDvzmi';
-const uint32 YellowDocsWindow::kMsgViewZoomOut = 'YDvzmo';
-const uint32 YellowDocsWindow::kMsgViewZoomReset = 'YDvzmr';
-const uint32 YellowDocsWindow::kMsgViewToggleToolbar = 'YDvttb';
-const uint32 YellowDocsWindow::kMsgViewToggleStatusBar = 'YDvtst';
+const uint32 YellowDocsWindow::kMsgFileNew = 'YDnw';
+const uint32 YellowDocsWindow::kMsgFileOpen = 'YDop';
+const uint32 YellowDocsWindow::kMsgFileSave = 'YDsv';
+const uint32 YellowDocsWindow::kMsgFileSaveAs = 'YDsa';
+const uint32 YellowDocsWindow::kMsgFileClose = 'YDcl';
+const uint32 YellowDocsWindow::kMsgFileQuit = 'YDqt';
 
-const uint32 YellowDocsWindow::kMsgInsertPageBreak = 'YDinpb';
-const uint32 YellowDocsWindow::kMsgInsertTable = 'YDintb';
-const uint32 YellowDocsWindow::kMsgInsertImage = 'YDinim';
+const uint32 YellowDocsWindow::kMsgEditUndo = 'YDun';
+const uint32 YellowDocsWindow::kMsgEditRedo = 'YDrd';
+const uint32 YellowDocsWindow::kMsgEditCut = 'YDct';
+const uint32 YellowDocsWindow::kMsgEditCopy = 'YDcp';
+const uint32 YellowDocsWindow::kMsgEditPaste = 'YDpa';
+const uint32 YellowDocsWindow::kMsgEditSelectAll = 'YDsl';
+const uint32 YellowDocsWindow::kMsgEditFind = 'YDfi';
+const uint32 YellowDocsWindow::kMsgEditReplace = 'YDrp';
 
-const uint32 YellowDocsWindow::kMsgFormatBold = 'YDfmtb';
-const uint32 YellowDocsWindow::kMsgFormatItalic = 'YDfmti';
-const uint32 YellowDocsWindow::kMsgFormatUnderline = 'YDfmtu';
-const uint32 YellowDocsWindow::kMsgFormatAlignLeft = 'YDfmta';
-const uint32 YellowDocsWindow::kMsgFormatAlignCenter = 'YDfmtc';
-const uint32 YellowDocsWindow::kMsgFormatAlignRight = 'YDfmtr';
-const uint32 YellowDocsWindow::kMsgFormatAlignJustify = 'YDfmtj';
+const uint32 YellowDocsWindow::kMsgViewZoomIn = 'YDzi';
+const uint32 YellowDocsWindow::kMsgViewZoomOut = 'YDzo';
+const uint32 YellowDocsWindow::kMsgViewZoomReset = 'YDzr';
+const uint32 YellowDocsWindow::kMsgViewToggleToolbar = 'YDtt';
+const uint32 YellowDocsWindow::kMsgViewToggleStatusBar = 'YDts';
 
-const uint32 YellowDocsWindow::kMsgHelpAbout = 'YDhlpa';
-const uint32 YellowDocsWindow::kMsgHelpDocumentation = 'YDhlpd';
+const uint32 YellowDocsWindow::kMsgInsertPageBreak = 'YDpb';
+const uint32 YellowDocsWindow::kMsgInsertTable = 'YDt1';
+const uint32 YellowDocsWindow::kMsgInsertImage = 'YDim';
 
-// Window constants
-const char* kWindowTitle = "Untitled - YellowDocs";
-const float kDefaultZoom = 1.0f;
-const float kZoomIncrement = 0.1f;
+const uint32 YellowDocsWindow::kMsgFormatBold = 'YDbd';
+const uint32 YellowDocsWindow::kMsgFormatItalic = 'YDit';
+const uint32 YellowDocsWindow::kMsgFormatUnderline = 'YDul';
+const uint32 YellowDocsWindow::kMsgFormatAlignLeft = 'YDfl';
+const uint32 YellowDocsWindow::kMsgFormatAlignCenter = 'YDfc';
+const uint32 YellowDocsWindow::kMsgFormatAlignRight = 'YDfr';
+const uint32 YellowDocsWindow::kMsgFormatAlignJustify = 'YDfj';
 
-// YellowDocsWindow implementation
+const uint32 YellowDocsWindow::kMsgHelpAbout = 'YDab';
+const uint32 YellowDocsWindow::kMsgHelpDocumentation = 'YDhd';
+
+const uint32 YellowDocsWindow::kMsgDocumentEdited = 'YDed';
+
+// ------------------------------------------------------------------- window
+
 YellowDocsWindow::YellowDocsWindow(BRect frame)
-    : BWindow(frame, kWindowTitle, B_TITLED_WINDOW, B_ASYNCHRONOUS_CONTROLS),
+    : BWindow(frame, "Untitled - YellowDocs", B_TITLED_WINDOW,
+              B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE | B_NOT_MINIMIZABLE),
       fMenuBar(nullptr),
       fToolBar(nullptr),
-      fMainView(nullptr),
+      fScrollView(nullptr),
+      fCanvas(nullptr),
       fStatusBar(nullptr),
-      fDocument(new YellowDocumentCore::YellowDocument()),
-      fDocumentPath(""),
+      fOpenPanel(nullptr),
+      fSavePanel(nullptr),
+      fDocument(nullptr),
       fDocumentModified(false),
-      fWindowTitle(kWindowTitle),
-      fZoomLevel(kDefaultZoom)
+      fZoomLevel(1.0f)
 {
-    YellowCommon::Logger::GetGlobalLogger().Info("Creating YellowDocs window");
-    
-    // Initialize the window
+    fDocument = new YellowDocument();
     InitWindow();
+    UpdateTitle();
+    UpdateStatusBar();
 }
 
 YellowDocsWindow::~YellowDocsWindow()
 {
-    YellowCommon::Logger::GetGlobalLogger().Info("Destroying YellowDocs window");
-    
+    delete fOpenPanel;
+    delete fSavePanel;
+    fOpenPanel = nullptr;
+    fSavePanel = nullptr;
+    // fCanvas and fMenuBar are children of this window (owned by it).
+    // fDocument is owned by us.
     delete fDocument;
-}
-
-void YellowDocsWindow::MessageReceived(BMessage* message)
-{
-    switch (message->what) {
-        // File menu
-        case kMsgFileNew:
-            NewDocument();
-            break;
-            
-        case kMsgFileOpen:
-            ShowOpenFilePanel();
-            break;
-            
-        case kMsgFileSave:
-            SaveDocument();
-            break;
-            
-        case kMsgFileSaveAs:
-            SaveDocumentAs();
-            break;
-            
-        case kMsgFileClose:
-            Quit();
-            break;
-            
-        case kMsgFileQuit:
-            be_app->PostMessage(B_QUIT_REQUESTED);
-            break;
-            
-        // Edit menu
-        case kMsgEditUndo:
-            // TODO: Implement undo
-            break;
-            
-        case kMsgEditRedo:
-            // TODO: Implement redo
-            break;
-            
-        case kMsgEditCut:
-            // TODO: Implement cut
-            break;
-            
-        case kMsgEditCopy:
-            // TODO: Implement copy
-            break;
-            
-        case kMsgEditPaste:
-            // TODO: Implement paste
-            break;
-            
-        case kMsgEditSelectAll:
-            // TODO: Implement select all
-            break;
-            
-        case kMsgEditFind:
-            // TODO: Implement find
-            break;
-            
-        case kMsgEditReplace:
-            // TODO: Implement replace
-            break;
-            
-        // View menu
-        case kMsgViewZoomIn:
-            fZoomLevel += kZoomIncrement;
-            UpdateStatusBar();
-            break;
-            
-        case kMsgViewZoomOut:
-            fZoomLevel -= kZoomIncrement;
-            if (fZoomLevel < 0.1f) fZoomLevel = 0.1f;
-            UpdateStatusBar();
-            break;
-            
-        case kMsgViewZoomReset:
-            fZoomLevel = kDefaultZoom;
-            UpdateStatusBar();
-            break;
-            
-        case kMsgViewToggleToolbar:
-            // TODO: Toggle toolbar visibility
-            break;
-            
-        case kMsgViewToggleStatusBar:
-            // TODO: Toggle status bar visibility
-            break;
-            
-        // Insert menu
-        case kMsgInsertPageBreak:
-            // TODO: Insert page break
-            break;
-            
-        case kMsgInsertTable:
-            // TODO: Insert table
-            break;
-            
-        case kMsgInsertImage:
-            // TODO: Insert image
-            break;
-            
-        // Format menu
-        case kMsgFormatBold:
-            // TODO: Toggle bold
-            break;
-            
-        case kMsgFormatItalic:
-            // TODO: Toggle italic
-            break;
-            
-        case kMsgFormatUnderline:
-            // TODO: Toggle underline
-            break;
-            
-        case kMsgFormatAlignLeft:
-            // TODO: Set left alignment
-            break;
-            
-        case kMsgFormatAlignCenter:
-            // TODO: Set center alignment
-            break;
-            
-        case kMsgFormatAlignRight:
-            // TODO: Set right alignment
-            break;
-            
-        case kMsgFormatAlignJustify:
-            // TODO: Set justify alignment
-            break;
-            
-        // Help menu
-        case kMsgHelpAbout:
-            be_app->PostMessage(B_ABOUT_REQUESTED);
-            break;
-            
-        case kMsgHelpDocumentation:
-            // TODO: Show documentation
-            break;
-            
-        default:
-            BWindow::MessageReceived(message);
-            break;
-    }
-}
-
-bool YellowDocsWindow::QuitRequested()
-{
-    YellowCommon::Logger::GetGlobalLogger().Info("Window quit requested");
-    
-    if (fDocumentModified) {
-        BString message;
-        if (fDocumentPath.IsEmpty()) {
-            message = "This document has unsaved changes. Save before closing?";
-        } else {
-            message.SetToFormat("Document '%s' has unsaved changes. Save before closing?", fDocumentPath.String());
-        }
-        
-        BAlert* alert = new BAlert("Unsaved Changes", message.String(), "Save", "Discard", "Cancel", B_WIDTH_AS_USUAL);
-        int32 result = alert->Go();
-        
-        switch (result) {
-            case 0: // Save
-                SaveDocument();
-                if (fDocumentModified) {
-                    return false; // Still modified, don't quit
-                }
-                break;
-                
-            case 1: // Discard
-                // Continue with quit
-                break;
-                
-            case 2: // Cancel
-            default:
-                return false;
-        }
-    }
-    
-    return true;
-}
-
-void YellowDocsWindow::FrameResized(float width, float height)
-{
-    BWindow::FrameResized(width, height);
-    
-    // TODO: Handle window resize
-}
-
-void YellowDocsWindow::WorkspacesChanged(uint32 oldWorkspaces, uint32 newWorkspaces)
-{
-    BWindow::WorkspacesChanged(oldWorkspaces, newWorkspaces);
-    
-    // TODO: Handle workspace changes
-}
-
-void YellowDocsWindow::ScreenChanged(BRect screenSize, color_space depth)
-{
-    BWindow::ScreenChanged(screenSize, depth);
-    
-    // TODO: Handle screen changes
-}
-
-void YellowDocsWindow::NewDocument()
-{
-    YellowCommon::Logger::GetGlobalLogger().Info("Creating new document");
-    
-    // Clear current document
-    delete fDocument;
-    fDocument = new YellowDocumentCore::YellowDocument();
-    fDocumentPath = "";
-    fDocumentModified = false;
-    
-    UpdateTitle();
-    UpdateStatusBar();
-    UpdateUI();
-}
-
-void YellowDocsWindow::LoadDocument(const BString& path)
-{
-    YellowCommon::Logger::GetGlobalLogger().Info("Loading document: %s", path.String());
-    
-    // TODO: Implement document loading
-    // For now, just set the path
-    fDocumentPath = path;
-    fDocumentModified = false;
-    
-    UpdateTitle();
-    UpdateStatusBar();
-    UpdateUI();
-}
-
-void YellowDocsWindow::SaveDocument()
-{
-    YellowCommon::Logger::GetGlobalLogger().Info("Saving document");
-    
-    if (fDocumentPath.IsEmpty()) {
-        SaveDocumentAs();
-    } else {
-        // TODO: Implement document saving
-        fDocumentModified = false;
-        UpdateTitle();
-        UpdateStatusBar();
-    }
-}
-
-void YellowDocsWindow::SaveDocumentAs()
-{
-    YellowCommon::Logger::GetGlobalLogger().Info("Saving document as...");
-    
-    ShowSaveFilePanel();
-}
-
-void YellowDocsWindow::CloseDocument()
-{
-    Quit();
-}
-
-bool YellowDocsWindow::IsDocumentModified() const
-{
-    return fDocumentModified;
-}
-
-void YellowDocsWindow::SetDocumentModified(bool modified)
-{
-    fDocumentModified = modified;
-    UpdateTitle();
-    UpdateStatusBar();
-}
-
-YellowDocumentCore::YellowDocument* YellowDocsWindow::GetDocument()
-{
-    return fDocument;
-}
-
-const YellowDocumentCore::YellowDocument* YellowDocsWindow::GetDocument() const
-{
-    return fDocument;
-}
-
-void YellowDocsWindow::UpdateTitle()
-{
-    BString title;
-    
-    if (fDocumentPath.IsEmpty()) {
-        title = "Untitled";
-    } else {
-        BPath path(fDocumentPath.String());
-        title = path.Leaf();
-    }
-    
-    if (fDocumentModified) {
-        title += " *";
-    }
-    
-    title += " - YellowDocs";
-    
-    SetTitle(title.String());
-    fWindowTitle = title;
-}
-
-void YellowDocsWindow::UpdateStatusBar()
-{
-    if (fStatusBar) {
-        BString status;
-        status.SetToFormat("Zoom: %.0f%% | Page: 1 | Words: 0 | Characters: 0", fZoomLevel * 100);
-        fStatusBar->SetText(status.String());
-    }
-}
-
-void YellowDocsWindow::UpdateUI()
-{
-    // Update menu items and toolbar buttons based on document state
-    // TODO: Implement UI updates
 }
 
 void YellowDocsWindow::InitWindow()
 {
-    YellowCommon::Logger::GetGlobalLogger().Debug("Initializing window");
-    
-    // Set window properties
-    SetSizeLimits(400, 400, 2000, 2000);
-    
-    // Initialize UI components
     InitMenuBar();
     InitToolBar();
     InitMainView();
     InitStatusBar();
-    
-    // Update UI
-    UpdateTitle();
-    UpdateStatusBar();
+    LayoutChildren();
 }
 
 void YellowDocsWindow::InitMenuBar()
 {
-    YellowCommon::Logger::GetGlobalLogger().Debug("Initializing menu bar");
-    
-    fMenuBar = new BMenuBar("menubar");
-    
-    // File menu
+    fMenuBar = new BMenuBar("MenuBar");
+
+    // File
     BMenu* fileMenu = new BMenu("File");
     fileMenu->AddItem(new BMenuItem("New", new BMessage(kMsgFileNew), 'N'));
     fileMenu->AddItem(new BMenuItem("Open...", new BMessage(kMsgFileOpen), 'O'));
+    fileMenu->AddSeparatorItem();
     fileMenu->AddItem(new BMenuItem("Save", new BMessage(kMsgFileSave), 'S'));
-    fileMenu->AddItem(new BMenuItem("Save As...", new BMessage(kMsgFileSaveAs)));
+    fileMenu->AddItem(new BMenuItem("Save As...", new BMessage(kMsgFileSaveAs), 'S',
+                                    B_SHIFT_KEY | B_COMMAND_KEY));
     fileMenu->AddSeparatorItem();
     fileMenu->AddItem(new BMenuItem("Close", new BMessage(kMsgFileClose), 'W'));
     fileMenu->AddItem(new BMenuItem("Quit", new BMessage(kMsgFileQuit), 'Q'));
-    
-    // Edit menu
+    fMenuBar->AddItem(fileMenu);
+
+    // Edit
     BMenu* editMenu = new BMenu("Edit");
     editMenu->AddItem(new BMenuItem("Undo", new BMessage(kMsgEditUndo), 'Z'));
-    editMenu->AddItem(new BMenuItem("Redo", new BMessage(kMsgEditRedo), 'Y'));
+    editMenu->AddItem(new BMenuItem("Redo", new BMessage(kMsgEditRedo), 'Z',
+                                    B_SHIFT_KEY | B_COMMAND_KEY));
     editMenu->AddSeparatorItem();
     editMenu->AddItem(new BMenuItem("Cut", new BMessage(kMsgEditCut), 'X'));
     editMenu->AddItem(new BMenuItem("Copy", new BMessage(kMsgEditCopy), 'C'));
     editMenu->AddItem(new BMenuItem("Paste", new BMessage(kMsgEditPaste), 'V'));
-    editMenu->AddItem(new BMenuItem("Select All", new BMessage(kMsgEditSelectAll), 'A'));
     editMenu->AddSeparatorItem();
+    editMenu->AddItem(new BMenuItem("Select All", new BMessage(kMsgEditSelectAll), 'A'));
     editMenu->AddItem(new BMenuItem("Find...", new BMessage(kMsgEditFind), 'F'));
-    editMenu->AddItem(new BMenuItem("Replace...", new BMessage(kMsgEditReplace), 'H'));
-    
-    // View menu
+    fMenuBar->AddItem(editMenu);
+
+    // View
     BMenu* viewMenu = new BMenu("View");
     viewMenu->AddItem(new BMenuItem("Zoom In", new BMessage(kMsgViewZoomIn), '+'));
     viewMenu->AddItem(new BMenuItem("Zoom Out", new BMessage(kMsgViewZoomOut), '-'));
-    viewMenu->AddItem(new BMenuItem("Reset Zoom", new BMessage(kMsgViewZoomReset), '0'));
+    viewMenu->AddItem(new BMenuItem("Normal Size", new BMessage(kMsgViewZoomReset), '0'));
     viewMenu->AddSeparatorItem();
-    viewMenu->AddItem(new BMenuItem("Show Toolbar", new BMessage(kMsgViewToggleToolbar)));
-    viewMenu->AddItem(new BMenuItem("Show Status Bar", new BMessage(kMsgViewToggleStatusBar)));
-    
-    // Insert menu
+    viewMenu->AddItem(new BMenuItem("Toggle Tool Bar", new BMessage(kMsgViewToggleToolbar)));
+    viewMenu->AddItem(new BMenuItem("Toggle Status Bar", new BMessage(kMsgViewToggleStatusBar)));
+    fMenuBar->AddItem(viewMenu);
+
+    // Insert
     BMenu* insertMenu = new BMenu("Insert");
     insertMenu->AddItem(new BMenuItem("Page Break", new BMessage(kMsgInsertPageBreak)));
-    insertMenu->AddItem(new BMenuItem("Table...", new BMessage(kMsgInsertTable)));
+    insertMenu->AddItem(new BMenuItem("Table", new BMessage(kMsgInsertTable)));
     insertMenu->AddItem(new BMenuItem("Image...", new BMessage(kMsgInsertImage)));
-    
-    // Format menu
+    fMenuBar->AddItem(insertMenu);
+
+    // Format
     BMenu* formatMenu = new BMenu("Format");
     formatMenu->AddItem(new BMenuItem("Bold", new BMessage(kMsgFormatBold), 'B'));
     formatMenu->AddItem(new BMenuItem("Italic", new BMessage(kMsgFormatItalic), 'I'));
     formatMenu->AddItem(new BMenuItem("Underline", new BMessage(kMsgFormatUnderline), 'U'));
     formatMenu->AddSeparatorItem();
-    formatMenu->AddItem(new BMenuItem("Align Left", new BMessage(kMsgFormatAlignLeft)));
-    formatMenu->AddItem(new BMenuItem("Align Center", new BMessage(kMsgFormatAlignCenter)));
-    formatMenu->AddItem(new BMenuItem("Align Right", new BMessage(kMsgFormatAlignRight)));
-    formatMenu->AddItem(new BMenuItem("Justify", new BMessage(kMsgFormatAlignJustify)));
-    
-    // Tools menu
-    BMenu* toolsMenu = new BMenu("Tools");
-    // TODO: Add tools menu items
-    
-    // Help menu
-    BMenu* helpMenu = new BMenu("Help");
-    helpMenu->AddItem(new BMenuItem("About YellowDocs...", new BMessage(kMsgHelpAbout)));
-    helpMenu->AddItem(new BMenuItem("Documentation", new BMessage(kMsgHelpDocumentation)));
-    
-    // Add menus to menu bar
-    fMenuBar->AddItem(fileMenu);
-    fMenuBar->AddItem(editMenu);
-    fMenuBar->AddItem(viewMenu);
-    fMenuBar->AddItem(insertMenu);
+    BMenu* alignMenu = new BMenu("Align");
+    alignMenu->AddItem(new BMenuItem("Left", new BMessage(kMsgFormatAlignLeft)));
+    alignMenu->AddItem(new BMenuItem("Center", new BMessage(kMsgFormatAlignCenter)));
+    alignMenu->AddItem(new BMenuItem("Right", new BMessage(kMsgFormatAlignRight)));
+    alignMenu->AddItem(new BMenuItem("Justify", new BMessage(kMsgFormatAlignJustify)));
+    formatMenu->AddItem(alignMenu);
     fMenuBar->AddItem(formatMenu);
-    fMenuBar->AddItem(toolsMenu);
+
+    // Help
+    BMenu* helpMenu = new BMenu("Help");
+    helpMenu->AddItem(new BMenuItem("About YellowDocs", new BMessage(kMsgHelpAbout)));
+    helpMenu->AddItem(new BMenuItem("Documentation", new BMessage(kMsgHelpDocumentation)));
     fMenuBar->AddItem(helpMenu);
-    
+
+    fMenuBar->SetTargetForItems(this);
     AddChild(fMenuBar);
 }
 
 void YellowDocsWindow::InitToolBar()
 {
-    YellowCommon::Logger::GetGlobalLogger().Debug("Initializing toolbar");
-    
-    // Create toolbar
-    fToolBar = new BToolBar(B_HORIZONTAL);
-    fToolBar->SetExplicitMinSize(BSize(400, 40));
-    
-    // Add buttons to toolbar
-    // TODO: Add actual toolbar buttons with icons
-    
+    fToolBar = new YellowUI::ToolBar("ToolBar");
+    fToolBar->AddButton("New", kMsgFileNew);
+    fToolBar->AddButton("Open", kMsgFileOpen);
+    fToolBar->AddButton("Save", kMsgFileSave);
+    fToolBar->AddSeparator();
+    fToolBar->AddButton("Bold", kMsgFormatBold);
+    fToolBar->AddButton("Italic", kMsgFormatItalic);
+    fToolBar->AddButton("Underline", kMsgFormatUnderline);
+    fToolBar->AddSeparator();
+    fToolBar->AddButton("Zoom +", kMsgViewZoomIn);
+    fToolBar->AddButton("Zoom -", kMsgViewZoomOut);
     AddChild(fToolBar);
 }
 
 void YellowDocsWindow::InitMainView()
 {
-    YellowCommon::Logger::GetGlobalLogger().Debug("Initializing main view");
-    
-    // Create main view
-    fMainView = new BView("main_view", B_WILL_DRAW | B_FRAME_EVENTS);
-    fMainView->SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
-    
-    AddChild(fMainView);
+    BRect canvasFrame(0, 0, Bounds().Width(), Bounds().Height());
+    fCanvas = new DocumentCanvas(canvasFrame);
+    fScrollView = new BScrollView("ScrollView", fCanvas,
+                                  B_FOLLOW_ALL_SIDES, 0, true, true);
+    AddChild(fScrollView);
+    fCanvas->SetDocument(fDocument);
 }
 
 void YellowDocsWindow::InitStatusBar()
 {
-    YellowCommon::Logger::GetGlobalLogger().Debug("Initializing status bar");
-    
-    fStatusBar = new BStatusBar("statusbar");
-    fStatusBar->SetText("Ready");
-    
+    fStatusBar = new BStatusBar("StatusBar", "YellowDocs");
     AddChild(fStatusBar);
 }
 
-void YellowDocsWindow::ShowOpenFilePanel()
+void YellowDocsWindow::LayoutChildren()
 {
-    YellowCommon::Logger::GetGlobalLogger().Debug("Showing open file panel");
-    
-    BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, nullptr, nullptr, B_FILE_NODE, false, new BMessage(kMsgFileOpen));
-    panel->SetTarget(this);
-    panel->Show();
+    float width = Bounds().Width();
+    float height = Bounds().Height();
+    float y = 0;
+
+    if (fMenuBar) {
+        float menuHeight = 25.0f;
+        fMenuBar->MoveTo(0, y);
+        fMenuBar->ResizeTo(width, menuHeight);
+        y += menuHeight;
+    }
+    if (fToolBar && fToolBar->IsHidden() == false) {
+        float toolHeight = 40.0f;
+        fToolBar->MoveTo(0, y);
+        fToolBar->ResizeTo(width, toolHeight);
+        y += toolHeight;
+    }
+    float statusHeight = 22.0f;
+    if (fStatusBar && !fStatusBar->IsHidden()) {
+        fStatusBar->MoveTo(0, height - statusHeight);
+        fStatusBar->ResizeTo(width, statusHeight);
+        height -= statusHeight;
+    }
+    if (fScrollView) {
+        fScrollView->MoveTo(0, y);
+        fScrollView->ResizeTo(width, height - y);
+    }
 }
 
-void YellowDocsWindow::ShowSaveFilePanel()
+void YellowDocsWindow::FrameResized(float width, float height)
 {
-    YellowCommon::Logger::GetGlobalLogger().Debug("Showing save file panel");
-    
-    BFilePanel* panel = new BFilePanel(B_SAVE_PANEL, nullptr, nullptr, B_FILE_NODE, false, new BMessage(kMsgFileSaveAs));
-    panel->SetTarget(this);
-    panel->Show();
+    (void)width;
+    (void)height;
+    LayoutChildren();
+}
+
+// ------------------------------------------------------------- document ops
+
+YellowDocument* YellowDocsWindow::GetDocument()
+{
+    return fDocument;
+}
+
+const YellowDocument* YellowDocsWindow::GetDocument() const
+{
+    return fDocument;
+}
+
+bool YellowDocsWindow::IsDocumentModified() const
+{
+    return fDocumentModified || (fDocument && fDocument->IsModified());
+}
+
+void YellowDocsWindow::SetDocumentModified(bool modified)
+{
+    fDocumentModified = modified;
+    if (fDocument) fDocument->SetModified(modified);
+    UpdateTitle();
+}
+
+void YellowDocsWindow::NewDocument()
+{
+    delete fDocument;
+    fDocument = new YellowDocument();
+    fDocumentPath.MakeEmpty();
+    if (fCanvas) fCanvas->SetDocument(fDocument);
+    SetDocumentModified(false);
+    UpdateTitle();
+    UpdateStatusBar();
+}
+
+bool YellowDocsWindow::ImportFromPath(const BString& path)
+{
+    // Pick the importer based on extension.
+    Importer* importer = nullptr;
+    YDFImporter ydf;
+    MarkdownImporter markdown;
+    PlainTextImporter plain;
+    ODFImporter odf;
+
+    if (path.Length() > 4 && path.FindFirst(".ydf") >= 0) {
+        importer = &ydf;
+    } else if (path.Length() > 3 && path.FindFirst(".md") >= 0) {
+        importer = &markdown;
+    } else if (path.Length() > 4 && path.FindFirst(".odt") >= 0) {
+        importer = &odf;
+    } else {
+        importer = &plain;
+    }
+    return importer->Import(fDocument, path);
+}
+
+bool YellowDocsWindow::LoadDocument(const BString& path)
+{
+    if (!fDocument) return false;
+    if (!ImportFromPath(path)) {
+        BAlert* alert = new BAlert("Open failed",
+                                   "Could not open the document.", "OK");
+        alert->Go();
+        return false;
+    }
+    fDocumentPath = path;
+    if (fCanvas) fCanvas->SetDocument(fDocument);
+    SetDocumentModified(false);
+    UpdateTitle();
+    UpdateStatusBar();
+    return true;
+}
+
+bool YellowDocsWindow::ExportToPath(const BString& path)
+{
+    Exporter* exporter = nullptr;
+    YDFExporter ydf;
+    MarkdownExporter markdown;
+    PlainTextExporter plain;
+    ODFExporter odf;
+
+    if (path.Length() > 4 && path.FindFirst(".ydf") >= 0) {
+        exporter = &ydf;
+    } else if (path.Length() > 3 && path.FindFirst(".md") >= 0) {
+        exporter = &markdown;
+    } else if (path.Length() > 4 && path.FindFirst(".odt") >= 0) {
+        exporter = &odf;
+    } else {
+        exporter = &plain;
+    }
+    return exporter->Export(fDocument, path);
+}
+
+bool YellowDocsWindow::SaveDocument()
+{
+    if (fDocumentPath.IsEmpty()) {
+        SaveDocumentAs();
+        return false;
+    }
+    if (!ExportToPath(fDocumentPath)) {
+        BAlert* alert = new BAlert("Save failed",
+                                   "Could not save the document.", "OK");
+        alert->Go();
+        return false;
+    }
+    SetDocumentModified(false);
+    return true;
+}
+
+void YellowDocsWindow::SaveDocumentAs()
+{
+    if (!fSavePanel) {
+        fSavePanel = new BFilePanel(B_SAVE_PANEL, new BMessenger(this));
+        fSavePanel->SetSaveText("Untitled.ydf");
+    }
+    fSavePanel->Show();
+}
+
+void YellowDocsWindow::CloseDocument()
+{
+    if (IsDocumentModified()) {
+        // Simple approach: just close; a real app would prompt.
+    }
+    PostMessage(B_QUIT_REQUESTED);
+}
+
+void YellowDocsWindow::UpdateTitle()
+{
+    BString title;
+    if (fDocumentPath.Length() > 0) {
+        int32 slash = fDocumentPath.FindLast('/');
+        if (slash >= 0 && slash + 1 < fDocumentPath.Length()) {
+            title.SetTo(fDocumentPath.String() + slash + 1);
+        } else {
+            title = fDocumentPath;
+        }
+    } else {
+        title = "Untitled";
+    }
+    title += " - YellowDocs";
+    if (IsDocumentModified()) {
+        title += " *";
+    }
+    SetTitle(title.String());
+}
+
+void YellowDocsWindow::UpdateStatusBar()
+{
+    if (!fStatusBar || !fDocument) return;
+    char buffer[128];
+    snprintf(buffer, sizeof(buffer), "%d words, %d characters, %d pages",
+             fDocument->GetWordCount(), fDocument->GetCharacterCount(),
+             fDocument->GetPageCount());
+    fStatusBar->SetTrailingText(buffer);
+}
+
+void YellowDocsWindow::UpdateUI()
+{
+    UpdateTitle();
+    UpdateStatusBar();
+}
+
+// ------------------------------------------------------------- file panels
+
+void YellowDocsWindow::ShowOpenFilePanel()
+{
+    if (!fOpenPanel) {
+        fOpenPanel = new BFilePanel(B_OPEN_PANEL, new BMessenger(this));
+    }
+    fOpenPanel->Show();
+}
+
+// ------------------------------------------------------------- messages
+
+void YellowDocsWindow::MessageReceived(BMessage* message)
+{
+    if (!message) {
+        BWindow::MessageReceived(message);
+        return;
+    }
+
+    switch (message->what) {
+        case kMsgDocumentEdited:
+            SetDocumentModified(true);
+            UpdateStatusBar();
+            return;
+
+        case kMsgFileNew:
+            NewDocument();
+            return;
+
+        case kMsgFileOpen:
+            ShowOpenFilePanel();
+            return;
+
+        case kMsgFileSave:
+            SaveDocument();
+            return;
+
+        case kMsgFileSaveAs:
+            SaveDocumentAs();
+            return;
+
+        case kMsgFileClose:
+            CloseDocument();
+            return;
+
+        case kMsgFileQuit:
+            PostMessage(B_QUIT_REQUESTED);
+            return;
+
+        case kMsgEditUndo:
+            if (fCanvas) fCanvas->Undo();
+            return;
+        case kMsgEditRedo:
+            if (fCanvas) fCanvas->Redo();
+            return;
+        case kMsgEditCut:
+            if (fCanvas) fCanvas->CutToClipboard();
+            return;
+        case kMsgEditCopy:
+            if (fCanvas) fCanvas->CopyToClipboard();
+            return;
+        case kMsgEditPaste:
+            if (fCanvas) fCanvas->PasteFromClipboard();
+            return;
+        case kMsgEditSelectAll:
+            if (fCanvas) fCanvas->SelectAll();
+            return;
+
+        case kMsgViewZoomIn:
+            if (fCanvas) fCanvas->ZoomIn();
+            return;
+        case kMsgViewZoomOut:
+            if (fCanvas) fCanvas->ZoomOut();
+            return;
+        case kMsgViewZoomReset:
+            if (fCanvas) fCanvas->ZoomReset();
+            return;
+
+        case kMsgViewToggleToolbar:
+            if (fToolBar) {
+                fToolBar->Hide();
+                LayoutChildren();
+            }
+            return;
+        case kMsgViewToggleStatusBar:
+            if (fStatusBar) {
+                fStatusBar->Hide();
+                LayoutChildren();
+            }
+            return;
+
+        case kMsgFormatBold:
+            if (fCanvas) fCanvas->ToggleBold();
+            return;
+        case kMsgFormatItalic:
+            if (fCanvas) fCanvas->ToggleItalic();
+            return;
+        case kMsgFormatUnderline:
+            if (fCanvas) fCanvas->ToggleUnderline();
+            return;
+        case kMsgFormatAlignLeft:
+            if (fCanvas) {
+                fCanvas->SetAlignment(ParagraphStyle::ALIGN_LEFT);
+            }
+            return;
+        case kMsgFormatAlignCenter:
+            if (fCanvas) {
+                fCanvas->SetAlignment(ParagraphStyle::ALIGN_CENTER);
+            }
+            return;
+        case kMsgFormatAlignRight:
+            if (fCanvas) {
+                fCanvas->SetAlignment(ParagraphStyle::ALIGN_RIGHT);
+            }
+            return;
+        case kMsgFormatAlignJustify:
+            if (fCanvas) {
+                fCanvas->SetAlignment(ParagraphStyle::ALIGN_JUSTIFY);
+            }
+            return;
+
+        case kMsgHelpAbout: {
+            BAlert* alert = new BAlert(
+                "About YellowDocs",
+                "YellowDocs " YELLOWOFFICE_VERSION "\n"
+                "A native word processor for Haiku.\n"
+                "Part of the YellowOffice suite.",
+                "OK");
+            alert->Go();
+            return;
+        }
+
+        case B_SAVE_REQUESTED: {
+            entry_ref ref;
+            if (message->FindRef("refs", &ref) == B_OK) {
+                BEntry entry(ref);
+                BPath path;
+                if (entry.GetPath(&path) == B_OK && path.Path()) {
+                    fDocumentPath = path.Path();
+                    SaveDocument();
+                }
+            }
+            return;
+        }
+
+        case B_REFS_RECEIVED: {
+            entry_ref ref;
+            if (message->FindRef("refs", &ref) == B_OK) {
+                BEntry entry(ref);
+                BPath path;
+                if (entry.GetPath(&path) == B_OK && path.Path()) {
+                    LoadDocument(path.Path());
+                }
+            }
+            return;
+        }
+
+        default:
+            BWindow::MessageReceived(message);
+            return;
+    }
+}
+
+bool YellowDocsWindow::QuitRequested()
+{
+    // TODO: prompt to save if modified.
+    return true;
 }

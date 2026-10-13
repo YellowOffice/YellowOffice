@@ -5,18 +5,18 @@
 #include <String.h>
 #include <vector>
 #include <memory>
+#include <time.h>
 
 #include <YellowCommon/Defines.h>
 #include <YellowDocumentCore/DocumentNode.h>
 #include <YellowDocumentCore/Style.h>
+#include <YellowDocumentCore/Nodes.h>
+#include <YellowDocumentCore/Command.h>
 
 namespace YellowDocumentCore {
 
 // Forward declarations
-class DocumentChange;
 class DocumentObserver;
-class EditCommand;
-class CommandHistory;
 
 /**
  * DocumentChange represents a change in the document
@@ -57,7 +57,7 @@ public:
 };
 
 /**
- * DocumentMetadata contains document metadata
+ * DocumentMetadata contains document metadata and statistics
  */
 class DocumentMetadata : public DocumentNode {
 public:
@@ -71,27 +71,28 @@ public:
     BString keywords;
     BString description;
     BString generator;
-    
+
     time_t created;
     time_t modified;
     time_t lastSaved;
-    
+
     // Document statistics
     int32 pageCount;
     int32 paragraphCount;
     int32 wordCount;
     int32 characterCount;
-    
+
     // Node interface
     NodeType GetType() const override;
     DocumentNode* Clone() const override;
-    
-    // Metadata access
+
+    // Metadata access: recounts paragraphs/words/characters from the
+    // document tree. pageCount is left untouched (the layout engine owns it).
     void UpdateStatistics(YellowDocument* document);
 };
 
 /**
- * SectionNode represents a section in the document
+ * SectionNode represents a section in the document (root node).
  */
 class SectionNode : public DocumentNode {
 public:
@@ -101,43 +102,40 @@ public:
     // Section properties
     BString name;
     bool isContinuous;
-    
-    // Page properties
+
+    // Page properties (points)
     float pageWidth;
     float pageHeight;
     float leftMargin;
     float rightMargin;
     float topMargin;
     float bottomMargin;
-    
+
     // Header and footer
     bool hasHeader;
     bool hasFooter;
-    
+
     // Node interface
     NodeType GetType() const override;
-    YellowDocument* GetDocument() override;
-    const YellowDocument* GetDocument() const override;
     DocumentNode* Clone() const override;
 };
 
 /**
- * ParagraphNode represents a paragraph in the document
+ * ParagraphNode represents a paragraph in the document.
+ * Children are TextRunNodes.
  */
 class ParagraphNode : public DocumentNode {
 public:
     ParagraphNode();
-    ParagraphNode(const BString& text);
+    explicit ParagraphNode(const BString& text);
     ~ParagraphNode();
 
     // Paragraph properties
     ParagraphStyle style;
     BString paragraphStyleName;
-    
+
     // Node interface
     NodeType GetType() const override;
-    YellowDocument* GetDocument() override;
-    const YellowDocument* GetDocument() const override;
     BString GetText() const override;
     void SetText(const BString& text) override;
     int32 GetTextLength() const override;
@@ -145,21 +143,25 @@ public:
     DocumentPosition GetEndPosition() const override;
     DocumentPosition GetPositionAt(int32 offset) const override;
     DocumentNode* Clone() const override;
-    
+
     // Text content
     void AppendText(const BString& text);
     void InsertText(int32 offset, const BString& text);
     void DeleteText(int32 offset, int32 length);
     BString GetText(int32 start, int32 length) const;
-    
+
     // Child management with text
     void AddTextRun(DocumentNode* textRun);
-    
+
     // Style
     void SetStyle(const ParagraphStyle& newStyle);
     const ParagraphStyle& GetStyle() const;
     void SetStyleName(const BString& styleName);
     const BString& GetStyleName() const;
+
+    /// Ensures at least one (possibly empty) text run exists so the
+    /// paragraph is caret-addressable.
+    void EnsureTextRun();
 };
 
 /**
@@ -168,18 +170,16 @@ public:
 class TextRunNode : public DocumentNode {
 public:
     TextRunNode();
-    TextRunNode(const BString& text, const TextStyle& style = TextStyle());
+    explicit TextRunNode(const BString& text, const TextStyle& style = TextStyle());
     ~TextRunNode();
 
     // TextRun properties
     BString text;
     TextStyle style;
     BString characterStyleName;
-    
+
     // Node interface
     NodeType GetType() const override;
-    YellowDocument* GetDocument() override;
-    const YellowDocument* GetDocument() const override;
     BString GetText() const override;
     void SetText(const BString& newText) override;
     int32 GetTextLength() const override;
@@ -187,7 +187,7 @@ public:
     DocumentPosition GetEndPosition() const override;
     DocumentPosition GetPositionAt(int32 offset) const override;
     DocumentNode* Clone() const override;
-    
+
     // Style
     void SetStyle(const TextStyle& newStyle);
     const TextStyle& GetStyle() const;
@@ -206,60 +206,66 @@ public:
     // Document management
     void Clear();
     bool IsEmpty() const;
-    
+
     // Root node access
     DocumentNode* GetRoot() const;
     void SetRoot(DocumentNode* root);
-    
+
+    /// Returns the document's root section (creating none; may be null).
+    SectionNode* GetRootSection() const;
+
     // Metadata
     DocumentMetadata* GetMetadata();
     const DocumentMetadata* GetMetadata() const;
     void SetMetadata(DocumentMetadata* metadata);
-    
+
     // Style management
     StyleManager* GetStyleManager();
     const StyleManager* GetStyleManager() const;
     void SetStyleManager(StyleManager* styleManager);
-    
+
     // Observer management
     void AddObserver(DocumentObserver* observer);
     void RemoveObserver(DocumentObserver* observer);
     void RemoveAllObservers();
-    
-    // Document modification
+
+    // Document modification notifications
     void NotifyDocumentChanged(const DocumentChange& change);
     void NotifyContentChanged(const DocumentRange& range);
     void NotifyStructureChanged();
     void NotifyStylesChanged();
-    
-    // Command history
+
+    // Command history (created on first use)
     CommandHistory* GetCommandHistory();
     const CommandHistory* GetCommandHistory() const;
-    
-    // File operations (will be implemented in import/export)
-    // These are placeholders for now
-    bool SaveToFile(const BString& filename);
-    bool LoadFromFile(const BString& filename);
-    
+
+    /// Convenience: executes a command through the history. Takes ownership.
+    bool ExecuteCommand(Command* command);
+    bool Undo();
+    bool Redo();
+    bool CanUndo() const;
+    bool CanRedo() const;
+
     // Document properties
     BString GetTitle() const;
     void SetTitle(const BString& title);
-    
+
     BString GetAuthor() const;
     void SetAuthor(const BString& author);
-    
+
     // Statistics
     void UpdateStatistics();
     int32 GetPageCount() const;
+    void SetPageCount(int32 count);
     int32 GetParagraphCount() const;
     int32 GetWordCount() const;
     int32 GetCharacterCount() const;
-    
+
     // Document state
     bool IsModified() const;
     void SetModified(bool modified);
     void MarkSaved();
-    
+
     // Document version
     int32 GetFormatVersion() const;
     void SetFormatVersion(int32 version);
@@ -270,7 +276,7 @@ private:
     StyleManager* fStyleManager;
     CommandHistory* fCommandHistory;
     std::vector<DocumentObserver*> fObservers;
-    
+
     bool fModified;
     int32 fFormatVersion;
 };

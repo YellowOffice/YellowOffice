@@ -1,6 +1,7 @@
 #include "YellowDocumentCore/YellowDocument.h"
 
 #include <algorithm>
+#include <string.h>
 #include <time.h>
 #include <vector>
 
@@ -43,7 +44,7 @@ DocumentMetadata::DocumentMetadata()
       created(time(nullptr)),
       modified(time(nullptr)),
       lastSaved(time(nullptr)),
-      pageCount(0),
+      pageCount(1),
       paragraphCount(0),
       wordCount(0),
       characterCount(0)
@@ -72,29 +73,68 @@ DocumentNode* DocumentMetadata::Clone() const
     clone->created = created;
     clone->modified = modified;
     clone->lastSaved = lastSaved;
+    clone->pageCount = pageCount;
+    clone->paragraphCount = paragraphCount;
+    clone->wordCount = wordCount;
+    clone->characterCount = characterCount;
     return clone;
 }
+
+namespace {
+
+void CountDocument(DocumentNode* node, int32& paragraphs, int32& words, int32& chars)
+{
+    if (!node) return;
+    if (node->GetType() == NODE_TYPE_PARAGRAPH) {
+        ++paragraphs;
+        BString text = node->GetText();
+        chars += text.Length();
+
+        // Count words: sequences of non-whitespace characters.
+        const char* s = text.String();
+        bool inWord = false;
+        for (int32 i = 0; i < text.Length(); ++i) {
+            bool isSpace = (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r');
+            if (!isSpace && !inWord) {
+                inWord = true;
+                ++words;
+            } else if (isSpace) {
+                inWord = false;
+            }
+        }
+        // A paragraph's text does not include its line break; still count
+        // paragraph mark as a character for parity with common editors.
+        ++chars;
+        return;
+    }
+    for (size_t i = 0; i < node->GetChildCount(); ++i) {
+        CountDocument(node->GetChild(i), paragraphs, words, chars);
+    }
+}
+
+} // namespace
 
 void DocumentMetadata::UpdateStatistics(YellowDocument* document)
 {
     if (!document) {
         return;
     }
-    
-    // TODO: Implement statistics calculation
-    pageCount = 0;
     paragraphCount = 0;
     wordCount = 0;
     characterCount = 0;
+    CountDocument(document->GetRoot(), paragraphCount, wordCount, characterCount);
+    if (pageCount < 1) {
+        pageCount = 1;
+    }
 }
 
 // SectionNode implementation
 SectionNode::SectionNode()
     : DocumentNode(NODE_TYPE_SECTION),
       isContinuous(true),
-      pageWidth(8.5f * 72.0f), // 8.5 inches in points
-      pageHeight(11.0f * 72.0f), // 11 inches in points
-      leftMargin(1.0f * 72.0f), // 1 inch in points
+      pageWidth(8.5f * 72.0f), // US Letter in points
+      pageHeight(11.0f * 72.0f),
+      leftMargin(1.0f * 72.0f),
       rightMargin(1.0f * 72.0f),
       topMargin(1.0f * 72.0f),
       bottomMargin(1.0f * 72.0f),
@@ -112,16 +152,6 @@ NodeType SectionNode::GetType() const
     return NODE_TYPE_SECTION;
 }
 
-YellowDocument* SectionNode::GetDocument()
-{
-    return nullptr; // Will be implemented when we have document access
-}
-
-const YellowDocument* SectionNode::GetDocument() const
-{
-    return nullptr; // Will be implemented when we have document access
-}
-
 DocumentNode* SectionNode::Clone() const
 {
     SectionNode* clone = new SectionNode();
@@ -135,15 +165,13 @@ DocumentNode* SectionNode::Clone() const
     clone->bottomMargin = bottomMargin;
     clone->hasHeader = hasHeader;
     clone->hasFooter = hasFooter;
-    
-    // Clone children
+
     for (size_t i = 0; i < GetChildCount(); ++i) {
         DocumentNode* child = GetChild(i);
         if (child) {
             clone->AddChild(child->Clone());
         }
     }
-    
     return clone;
 }
 
@@ -156,11 +184,8 @@ ParagraphNode::ParagraphNode()
 ParagraphNode::ParagraphNode(const BString& text)
     : DocumentNode(NODE_TYPE_PARAGRAPH)
 {
-    if (!text.IsEmpty()) {
-        // Create a text run with the text
-        TextRunNode* textRun = new TextRunNode(text);
-        AddChild(textRun);
-    }
+    TextRunNode* textRun = new TextRunNode(text);
+    AddChild(textRun);
 }
 
 ParagraphNode::~ParagraphNode()
@@ -170,16 +195,6 @@ ParagraphNode::~ParagraphNode()
 NodeType ParagraphNode::GetType() const
 {
     return NODE_TYPE_PARAGRAPH;
-}
-
-YellowDocument* ParagraphNode::GetDocument()
-{
-    return nullptr; // Will be implemented when we have document access
-}
-
-const YellowDocument* ParagraphNode::GetDocument() const
-{
-    return nullptr; // Will be implemented when we have document access
 }
 
 BString ParagraphNode::GetText() const
@@ -196,12 +211,9 @@ BString ParagraphNode::GetText() const
 
 void ParagraphNode::SetText(const BString& text)
 {
-    // Remove all children and create a new text run
     RemoveAllChildren();
-    if (!text.IsEmpty()) {
-        TextRunNode* textRun = new TextRunNode(text);
-        AddChild(textRun);
-    }
+    TextRunNode* textRun = new TextRunNode(text);
+    AddChild(textRun);
 }
 
 int32 ParagraphNode::GetTextLength() const
@@ -218,26 +230,42 @@ int32 ParagraphNode::GetTextLength() const
 
 DocumentPosition ParagraphNode::GetStartPosition() const
 {
+    for (size_t i = 0; i < GetChildCount(); ++i) {
+        DocumentNode* child = GetChild(i);
+        if (child && child->GetTextLength() > 0) {
+            return child->GetStartPosition();
+        }
+    }
     return DocumentPosition(const_cast<ParagraphNode*>(this), 0);
 }
 
 DocumentPosition ParagraphNode::GetEndPosition() const
 {
-    return DocumentPosition(const_cast<ParagraphNode*>(this), GetTextLength());
+    for (size_t i = GetChildCount(); i-- > 0; ) {
+        DocumentNode* child = GetChild(i);
+        if (child && child->GetTextLength() > 0) {
+            return child->GetEndPosition();
+        }
+    }
+    return DocumentPosition(const_cast<ParagraphNode*>(this), 0);
 }
 
 DocumentPosition ParagraphNode::GetPositionAt(int32 offset) const
 {
-    // Find which child contains the offset
+    if (offset <= 0) {
+        return GetStartPosition();
+    }
     for (size_t i = 0; i < GetChildCount(); ++i) {
         DocumentNode* child = GetChild(i);
-        if (child) {
-            int32 childLength = child->GetTextLength();
-            if (offset < childLength) {
-                return child->GetPositionAt(offset);
-            }
-            offset -= childLength;
+        if (!child) continue;
+        int32 childLength = child->GetTextLength();
+        if (offset < childLength) {
+            return child->GetPositionAt(offset);
         }
+        if (offset == childLength && child->GetType() == NODE_TYPE_TEXT_RUN) {
+            return child->GetPositionAt(offset);
+        }
+        offset -= childLength;
     }
     return GetEndPosition();
 }
@@ -247,114 +275,101 @@ DocumentNode* ParagraphNode::Clone() const
     ParagraphNode* clone = new ParagraphNode();
     clone->style = style;
     clone->paragraphStyleName = paragraphStyleName;
-    
-    // Clone children
+
     for (size_t i = 0; i < GetChildCount(); ++i) {
         DocumentNode* child = GetChild(i);
         if (child) {
             clone->AddChild(child->Clone());
         }
     }
-    
     return clone;
 }
 
 void ParagraphNode::AppendText(const BString& text)
 {
-    if (!text.IsEmpty()) {
-        // If we have text runs, append to the last one
-        if (GetChildCount() > 0) {
-            DocumentNode* lastChild = GetChild(GetChildCount() - 1);
-            if (lastChild && lastChild->GetType() == NODE_TYPE_TEXT_RUN) {
-                TextRunNode* textRun = static_cast<TextRunNode*>(lastChild);
-                textRun->text += text;
-                return;
-            }
+    if (text.IsEmpty()) return;
+    if (GetChildCount() > 0) {
+        DocumentNode* lastChild = GetChild(GetChildCount() - 1);
+        if (lastChild && lastChild->GetType() == NODE_TYPE_TEXT_RUN) {
+            TextRunNode* textRun = static_cast<TextRunNode*>(lastChild);
+            textRun->text += text;
+            return;
         }
-        // Otherwise create a new text run
-        TextRunNode* textRun = new TextRunNode(text);
-        AddChild(textRun);
     }
+    TextRunNode* textRun = new TextRunNode(text);
+    AddChild(textRun);
 }
 
 void ParagraphNode::InsertText(int32 offset, const BString& text)
 {
-    if (text.IsEmpty()) {
+    if (text.IsEmpty()) return;
+    if (offset < 0) offset = 0;
+
+    if (GetChildCount() == 0) {
+        TextRunNode* textRun = new TextRunNode(text);
+        AddChild(textRun);
         return;
     }
-    
-    // Find the text run that contains the offset
+
     for (size_t i = 0; i < GetChildCount(); ++i) {
         DocumentNode* child = GetChild(i);
         if (child && child->GetType() == NODE_TYPE_TEXT_RUN) {
             TextRunNode* textRun = static_cast<TextRunNode*>(child);
             int32 childLength = textRun->GetTextLength();
             if (offset <= childLength) {
-                // Insert into this text run
                 textRun->text.Insert(text, offset);
                 return;
             }
             offset -= childLength;
         }
     }
-    
-    // If we get here, append to the end
+
     AppendText(text);
 }
 
 void ParagraphNode::DeleteText(int32 offset, int32 length)
 {
-    if (length <= 0) {
-        return;
-    }
-    
-    // Find the text run that contains the offset
-    for (size_t i = 0; i < GetChildCount(); ++i) {
+    if (length <= 0 || offset < 0) return;
+
+    for (size_t i = 0; i < GetChildCount() && length > 0; ++i) {
         DocumentNode* child = GetChild(i);
         if (child && child->GetType() == NODE_TYPE_TEXT_RUN) {
             TextRunNode* textRun = static_cast<TextRunNode*>(child);
             int32 childLength = textRun->GetTextLength();
             if (offset < childLength) {
-                // Delete from this text run
                 int32 deleteLength = std::min(length, childLength - offset);
                 textRun->text.Remove(offset, deleteLength);
                 length -= deleteLength;
-                if (length <= 0) {
-                    return;
-                }
                 offset = 0;
             } else {
                 offset -= childLength;
             }
         }
     }
+
+    // Remove empty runs (but keep at least one run so the paragraph stays
+    // caret-addressable).
+    for (size_t i = GetChildCount(); i-- > 0; ) {
+        DocumentNode* child = GetChild(i);
+        if (child && child->GetType() == NODE_TYPE_TEXT_RUN &&
+            child->GetTextLength() == 0 && GetChildCount() > 1) {
+            RemoveChild(i);
+            delete child;
+        }
+    }
 }
 
 BString ParagraphNode::GetText(int32 start, int32 length) const
 {
-    BString result;
-    int32 remaining = length;
-    int32 currentStart = start;
-    
-    for (size_t i = 0; i < GetChildCount() && remaining > 0; ++i) {
-        DocumentNode* child = GetChild(i);
-        if (child && child->GetType() == NODE_TYPE_TEXT_RUN) {
-            TextRunNode* textRun = static_cast<TextRunNode*>(child);
-            int32 childLength = textRun->GetTextLength();
-            
-            if (currentStart < childLength) {
-                int32 copyLength = std::min(remaining, childLength - currentStart);
-                result += textRun->text.String() + currentStart;
-                result.Truncate(result.Length() + copyLength);
-                remaining -= copyLength;
-                currentStart = 0;
-            } else {
-                currentStart -= childLength;
-            }
-        }
+    BString full = GetText();
+    if (start < 0 || start > full.Length() || length <= 0) {
+        return BString();
     }
-    
-    return result;
+    int32 available = full.Length() - start;
+    if (length > available) {
+        length = available;
+    }
+    return BString(full.String() + start, length);
 }
 
 void ParagraphNode::AddTextRun(DocumentNode* textRun)
@@ -384,16 +399,23 @@ const BString& ParagraphNode::GetStyleName() const
     return paragraphStyleName;
 }
 
+void ParagraphNode::EnsureTextRun()
+{
+    if (GetChildCount() == 0) {
+        AddChild(new TextRunNode(BString()));
+    }
+}
+
 // TextRunNode implementation
 TextRunNode::TextRunNode()
     : DocumentNode(NODE_TYPE_TEXT_RUN)
 {
 }
 
-TextRunNode::TextRunNode(const BString& text, const TextStyle& style)
+TextRunNode::TextRunNode(const BString& textIn, const TextStyle& styleIn)
     : DocumentNode(NODE_TYPE_TEXT_RUN),
-      text(text),
-      style(style)
+      text(textIn),
+      style(styleIn)
 {
 }
 
@@ -404,16 +426,6 @@ TextRunNode::~TextRunNode()
 NodeType TextRunNode::GetType() const
 {
     return NODE_TYPE_TEXT_RUN;
-}
-
-YellowDocument* TextRunNode::GetDocument()
-{
-    return nullptr; // Will be implemented when we have document access
-}
-
-const YellowDocument* TextRunNode::GetDocument() const
-{
-    return nullptr; // Will be implemented when we have document access
 }
 
 BString TextRunNode::GetText() const
@@ -443,6 +455,8 @@ DocumentPosition TextRunNode::GetEndPosition() const
 
 DocumentPosition TextRunNode::GetPositionAt(int32 offset) const
 {
+    if (offset < 0) offset = 0;
+    if (offset > text.Length()) offset = text.Length();
     return DocumentPosition(const_cast<TextRunNode*>(this), offset);
 }
 
@@ -478,58 +492,70 @@ YellowDocument::YellowDocument()
     : fRoot(nullptr),
       fMetadata(new DocumentMetadata()),
       fStyleManager(new StyleManager()),
-      fCommandHistory(nullptr), // Will be created when needed
+      fCommandHistory(nullptr),
       fModified(false),
       fFormatVersion(1)
 {
-    // Set up root section
     SectionNode* section = new SectionNode();
     section->name = "Default Section";
+    section->SetDocument(this);
     fRoot = section;
+
+    // A new document always has one empty paragraph so the caret has
+    // somewhere to live.
+    ParagraphNode* paragraph = new ParagraphNode();
+    paragraph->EnsureTextRun();
+    section->AddChild(paragraph);
 }
 
 YellowDocument::~YellowDocument()
 {
-    Clear();
+    RemoveAllObservers();
+    delete fRoot;
+    fRoot = nullptr;
     delete fMetadata;
+    fMetadata = nullptr;
     delete fStyleManager;
-    if (fCommandHistory) {
-        delete fCommandHistory;
-    }
+    fStyleManager = nullptr;
+    delete fCommandHistory;
+    fCommandHistory = nullptr;
 }
 
 void YellowDocument::Clear()
 {
-    // Remove all observers
     RemoveAllObservers();
-    
-    // Delete the document tree
-    if (fRoot) {
-        delete fRoot;
-        fRoot = nullptr;
+
+    if (fCommandHistory) {
+        fCommandHistory->Clear();
     }
-    
-    // Create new root section
+
+    delete fRoot;
+    fRoot = nullptr;
+
     SectionNode* section = new SectionNode();
     section->name = "Default Section";
+    section->SetDocument(this);
     fRoot = section;
-    
-    // Reset metadata
+
+    ParagraphNode* paragraph = new ParagraphNode();
+    paragraph->EnsureTextRun();
+    section->AddChild(paragraph);
+
     if (fMetadata) {
         *fMetadata = DocumentMetadata();
     }
-    
-    // Reset modified state
+
     fModified = false;
 }
 
 bool YellowDocument::IsEmpty() const
 {
-    // Check if we have any content beyond the root section
-    if (fRoot && fRoot->GetChildCount() > 0) {
-        return false;
-    }
-    return true;
+    if (!fRoot) return true;
+    // Empty means: a single empty paragraph and nothing else.
+    if (fRoot->GetChildCount() != 1) return false;
+    DocumentNode* only = fRoot->GetChild(0);
+    if (!only || only->GetType() != NODE_TYPE_PARAGRAPH) return false;
+    return only->GetTextLength() == 0;
 }
 
 DocumentNode* YellowDocument::GetRoot() const
@@ -540,14 +566,21 @@ DocumentNode* YellowDocument::GetRoot() const
 void YellowDocument::SetRoot(DocumentNode* root)
 {
     if (fRoot != root) {
-        if (fRoot) {
-            delete fRoot;
-        }
+        delete fRoot;
         fRoot = root;
         if (fRoot) {
             fRoot->SetParent(nullptr);
+            fRoot->SetDocument(this);
         }
     }
+}
+
+SectionNode* YellowDocument::GetRootSection() const
+{
+    if (fRoot && fRoot->GetType() == NODE_TYPE_SECTION) {
+        return static_cast<SectionNode*>(fRoot);
+    }
+    return nullptr;
 }
 
 DocumentMetadata* YellowDocument::GetMetadata()
@@ -588,25 +621,19 @@ void YellowDocument::SetStyleManager(StyleManager* styleManager)
 
 void YellowDocument::AddObserver(DocumentObserver* observer)
 {
-    if (observer) {
-        // Check if already exists
-        for (DocumentObserver* obs : fObservers) {
-            if (obs == observer) {
-                return;
-            }
-        }
-        fObservers.push_back(observer);
+    if (!observer) return;
+    for (DocumentObserver* existing : fObservers) {
+        if (existing == observer) return;
     }
+    fObservers.push_back(observer);
 }
 
 void YellowDocument::RemoveObserver(DocumentObserver* observer)
 {
-    if (observer) {
-        for (auto it = fObservers.begin(); it != fObservers.end(); ++it) {
-            if (*it == observer) {
-                fObservers.erase(it);
-                return;
-            }
+    for (auto it = fObservers.begin(); it != fObservers.end(); ++it) {
+        if (*it == observer) {
+            fObservers.erase(it);
+            return;
         }
     }
 }
@@ -625,6 +652,9 @@ void YellowDocument::NotifyDocumentChanged(const DocumentChange& change)
 
 void YellowDocument::NotifyContentChanged(const DocumentRange& range)
 {
+    if (fMetadata) {
+        fMetadata->modified = time(nullptr);
+    }
     for (DocumentObserver* observer : fObservers) {
         observer->DocumentContentChanged(range);
     }
@@ -632,6 +662,9 @@ void YellowDocument::NotifyContentChanged(const DocumentRange& range)
 
 void YellowDocument::NotifyStructureChanged()
 {
+    if (fMetadata) {
+        fMetadata->modified = time(nullptr);
+    }
     for (DocumentObserver* observer : fObservers) {
         observer->DocumentStructureChanged();
     }
@@ -647,7 +680,7 @@ void YellowDocument::NotifyStylesChanged()
 CommandHistory* YellowDocument::GetCommandHistory()
 {
     if (!fCommandHistory) {
-        // TODO: Create command history when EditCommand is implemented
+        fCommandHistory = new CommandHistory(this);
     }
     return fCommandHistory;
 }
@@ -657,16 +690,33 @@ const CommandHistory* YellowDocument::GetCommandHistory() const
     return fCommandHistory;
 }
 
-bool YellowDocument::SaveToFile(const BString& filename)
+bool YellowDocument::ExecuteCommand(Command* command)
 {
-    // TODO: Implement file saving
-    return false;
+    return GetCommandHistory()->Execute(command);
 }
 
-bool YellowDocument::LoadFromFile(const BString& filename)
+bool YellowDocument::Undo()
 {
-    // TODO: Implement file loading
-    return false;
+    CommandHistory* history = GetCommandHistory();
+    if (!history->CanUndo()) return false;
+    return history->Undo();
+}
+
+bool YellowDocument::Redo()
+{
+    CommandHistory* history = GetCommandHistory();
+    if (!history->CanRedo()) return false;
+    return history->Redo();
+}
+
+bool YellowDocument::CanUndo() const
+{
+    return fCommandHistory && fCommandHistory->CanUndo();
+}
+
+bool YellowDocument::CanRedo() const
+{
+    return fCommandHistory && fCommandHistory->CanRedo();
 }
 
 BString YellowDocument::GetTitle() const
@@ -714,6 +764,13 @@ int32 YellowDocument::GetPageCount() const
     return 0;
 }
 
+void YellowDocument::SetPageCount(int32 count)
+{
+    if (fMetadata) {
+        fMetadata->pageCount = count < 1 ? 1 : count;
+    }
+}
+
 int32 YellowDocument::GetParagraphCount() const
 {
     if (fMetadata) {
@@ -746,6 +803,9 @@ bool YellowDocument::IsModified() const
 void YellowDocument::SetModified(bool modified)
 {
     fModified = modified;
+    if (modified && fMetadata) {
+        fMetadata->modified = time(nullptr);
+    }
 }
 
 void YellowDocument::MarkSaved()

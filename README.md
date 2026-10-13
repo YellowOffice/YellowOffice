@@ -1,108 +1,85 @@
 # YellowOffice
 
-A native office productivity suite for Haiku OS.
+A native office suite for [Haiku OS](https://www.haiku-os.org/), built with
+the Haiku API. The first application is **YellowDocs**, a word processor.
 
-## Overview
+## Status
 
-YellowOffice is a comprehensive office suite designed specifically for Haiku OS, utilizing native Haiku APIs and conventions. The suite aims to provide professional-grade productivity tools while maintaining the lightweight, efficient, and user-friendly nature of Haiku.
+Work in progress, hosted development:
 
-## Suite Applications
+- The core document model, layout engine, import/export, and the YellowDocs
+  app all compile and are covered by unit tests (see *Developing* below).
+- Formats implemented: native **YDF** (zip + JSON), **Markdown**, plain text,
+  and **OpenDocument Text** (ODF).
+- The UI has been developed and syntax-checked against the Haiku API, but has
+  not yet been run on a real Haiku system — expect rough edges.
 
-- **YellowDocs**: Full-featured word processor and document editor (primary focus)
-- Future applications: Spreadsheets, Presentations, Drawing tools, Mail merge utilities
-
-## Architecture
-
-The project uses a monorepo structure with shared libraries to maximize code reuse across applications:
+## Layout
 
 ```
 YellowOffice/
-├── apps/
-│   └── YellowDocs/          # Word processor application
-│       ├── src/             # Application source code
-│       ├── resources/       # Icons, layouts, etc.
-│       ├── tests/           # Application tests
-│       └── docs/            # Application-specific docs
+├── apps/YellowDocs/         Word processor application
+│   ├── src/                 App, window, document canvas
+│   └── resources/           rdef, generated icons (scripts/generate-icons.py)
 ├── libraries/
-│   ├── YellowDocumentCore/  # Core document model
-│   ├── YellowDocumentLayout/# Document layout engine
-│   ├── YellowImportExport/  # Import/export adapters
-│   ├── YellowUI/            # Shared UI components
-│   └── YellowCommon/        # Common utilities
-├── packaging/
-│   └── hpkg/                # Haiku package files
-├── build/                   # Build system files
-├── docs/                    # Suite documentation
-└── scripts/                 # Build and packaging scripts
+│   ├── YellowCommon/        Logger, JSON, error handling, defines
+│   ├── YellowDocumentCore/  Document model, commands, styles, undo/redo
+│   ├── YellowDocumentLayout/Layout engine, text/paragraph layout, selection
+│   ├── YellowImportExport/  Format registry; YDF, Markdown, text, ODF I/O
+│   └── YellowUI/            Shared UI bits (ToolBar, ActionManager)
+├── build/haiku-stub/        Header stubs so non-UI code builds off-Haiku
+├── docs/                    Architecture notes
+├── packaging/hpkg/          .PackageInfo for the HPKG package
+├── scripts/                 syntax-check.sh, package.sh, generate-icons.py
+└── tests/                   Host-built unit tests
 ```
 
 ## Building
 
-### Prerequisites
+### On Haiku
 
-- Haiku OS (latest nightly recommended)
-- Haiku Development Tools
-- Git
+Requires cmake, gcc, zlib headers. All libraries build static and link into
+the app.
 
-### Build Instructions
+```sh
+cmake -S . -B build/haiku -DCMAKE_BUILD_TYPE=Release
+cmake --build build/haiku -j 4
+# binary: build/haiku/apps/YellowDocs/YellowDocs
+```
 
-1. **Using Haiku's native build system (Jam):**
-   ```bash
-   cd /path/to/YellowOffice
-   jam -q
-   ```
+### Off-Haiku (development)
 
-2. **Using CMake (alternative):**
-   ```bash
-   mkdir build && cd build
-   cmake .. -DCMAKE_BUILD_TYPE=Release
-   make -j$(nproc)
-   ```
+The non-UI libraries build against header stubs (`build/haiku-stub`) so the
+model, layout, and I/O code can be compiled and tested on any host:
 
-### Build Options
-
-- `ENABLE_TESTS`: Build unit tests (default: ON)
-- `ENABLE_DOCS`: Build documentation (default: OFF)
-- `INSTALL_PREFIX`: Installation directory (default: /boot/common)
+```sh
+make test       # configure, build, run unit tests
+make syntax     # -fsyntax-only over every project source file
+```
 
 ## Packaging
 
-YellowOffice uses Haiku's native HPKG package format for distribution.
+On Haiku:
 
-To create packages:
-```bash
-cd /path/to/YellowOffice
-./scripts/package.sh
+```sh
+scripts/package.sh
+# -> dist/YellowDocs-0.1.0-1-x86_64.hpkg
 ```
 
-## Installation
+The script builds Release, compiles `YellowDocs.rdef` (app signature, file
+types, HVIF icon) with `rc`, attaches it with `xres`, and runs
+`package create`. The package description is
+`packaging/hpkg/YellowDocs.PackageInfo`.
 
-1. Build the project
-2. Run the package creation script
-3. Install using Haiku's PackageManager or `pkgman`:
-   ```bash
-   pkgman install YellowOffice-*.hpkg
-   ```
+## Regenerating icons
 
-## Documentation
+```sh
+python3 scripts/generate-icons.py
+```
 
-- [Architecture Overview](docs/ARCHITECTURE.md)
-- [API Documentation](docs/API.md)
-- [File Formats](docs/FORMATS.md)
-- [Development Guide](docs/DEVELOPMENT.md)
-
-## Contributing
-
-Contributions are welcome! Please follow the [Contribution Guidelines](docs/CONTRIBUTING.md).
+Writes the PNG icons and `YellowDocs.rdef` (including the embedded HVIF app
+icon) under `apps/YellowDocs/resources/`.
 
 ## License
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
-
-## Roadmap
-
-See [ROADMAP.md](docs/ROADMAP.md) for development milestones and planned features.
-
----
-
-**Note**: This is a work in progress. Current focus is on YellowDocs as the foundation for the suite.
+MIT — see [LICENSE](LICENSE).

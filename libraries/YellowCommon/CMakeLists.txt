@@ -1,59 +1,30 @@
-# YellowCommon Library
-# Shared utilities for YellowOffice suite
+# YellowCommon - shared utilities (logging, JSON, errors)
 
-# Library name
 set(LIBRARY_NAME YellowCommon)
 
-# Source files
 set(SOURCES
     src/Logger.cpp
     src/Error.cpp
+    src/Json.cpp
 )
 
-# Headers
-set(HEADERS
-    include/YellowCommon/Defines.h
-    include/YellowCommon/Logger.h
-    include/YellowCommon/Error.h
-)
+add_library(${LIBRARY_NAME} STATIC ${SOURCES})
 
-# Include directories
-set(INCLUDE_DIRS
-    include
-)
-
-# Create the library
-add_library(${LIBRARY_NAME} SHARED ${SOURCES} ${HEADERS})
-
-# Set library version
-target_compile_definitions(${LIBRARY_NAME} PRIVATE YELLOWCOMMON_BUILDING_DLL)
-
-# Include directories
-target_include_directories(${LIBRARY_NAME} 
+target_include_directories(${LIBRARY_NAME}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include/YellowCommon>
-    PRIVATE
-        ${HAIKU_INCLUDE_DIR}
+        $<INSTALL_INTERFACE:include>
 )
 
-# Link libraries
-target_link_libraries(${LIBRARY_NAME}
-    ${HAIKU_BE_LIBRARY}
-)
+if(YELLOW_ON_HAIKU)
+    target_link_libraries(${LIBRARY_NAME} PUBLIC ${YELLOW_PLATFORM_LIBS})
+endif()
 
-# Output directory
 set_target_properties(${LIBRARY_NAME} PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    OUTPUT_NAME ${LIBRARY_NAME}
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
 )
 
-# Installation
-install(TARGETS ${LIBRARY_NAME}
-    LIBRARY DESTINATION lib/YellowOffice
-    ARCHIVE DESTINATION lib/YellowOffice
-)
-
-install(DIRECTORY include/YellowCommon
-    DESTINATION include
-)
+if(ENABLE_INSTALL AND YELLOW_ON_HAIKU)
+    install(TARGETS ${LIBRARY_NAME} ARCHIVE DESTINATION lib/YellowOffice)
+    install(DIRECTORY include/YellowCommon DESTINATION include)
+endif()

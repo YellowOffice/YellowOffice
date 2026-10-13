@@ -1,79 +1,39 @@
-# YellowDocs Application
-# Word processor for YellowOffice suite
+# YellowDocs - word processor application (Haiku-only)
 
-# Application name
 set(APP_NAME YellowDocs)
 
-# Source files
 set(SOURCES
     src/YellowDocsApp.cpp
     src/YellowDocsWindow.cpp
+    src/DocumentCanvas.cpp
 )
 
-# Headers
-set(HEADERS
-    src/YellowDocsApp.h
-    src/YellowDocsWindow.h
+add_executable(${APP_NAME} ${SOURCES})
+
+target_include_directories(${APP_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-# Resources
-set(RESOURCES
-    resources/YellowDocs.rdef
-    resources/app_icon_16.png
-    resources/app_icon_32.png
-    resources/app_icon_64.png
-    resources/app_icon_128.png
-    resources/app_icon_256.png
-    resources/document_icon_16.png
-    resources/document_icon_32.png
-    resources/document_icon_64.png
-)
-
-# Include directories
-set(INCLUDE_DIRS
-    src
-    ../../libraries/YellowCommon/include
-    ../../libraries/YellowDocumentCore/include
-    ../../libraries/YellowDocumentLayout/include
-    ../../libraries/YellowUI/include
-    ../../libraries/YellowImportExport/include
-)
-
-# Create the application
-add_executable(${APP_NAME} ${SOURCES} ${HEADERS})
-
-# Include directories
-target_include_directories(${APP_NAME}
-    PRIVATE
-        ${HAIKU_INCLUDE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/YellowCommon/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../libraries/YellowDocumentCore/include
-)
-
-# Link libraries
 target_link_libraries(${APP_NAME}
-    ${HAIKU_BE_LIBRARY}
-    ${HAIKU_TRACKER_LIBRARY}
     YellowCommon
     YellowDocumentCore
     YellowDocumentLayout
-    YellowUI
     YellowImportExport
+    YellowUI
+    ${YELLOW_PLATFORM_LIBS}
 )
 
-# Output directory
 set_target_properties(${APP_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/apps/YellowDocs
-    OUTPUT_NAME ${APP_NAME}
 )
 
-# Installation
-install(TARGETS ${APP_NAME}
-    RUNTIME DESTINATION bin
-)
-
-# Install resources
-install(DIRECTORY resources/
-    DESTINATION app/YellowDocs
-)
+if(ENABLE_INSTALL AND YELLOW_ON_HAIKU)
+    install(TARGETS ${APP_NAME} RUNTIME DESTINATION bin)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/resources/YellowDocs.rdef)
+        install(FILES resources/YellowDocs.rdef DESTINATION data/YellowDocs)
+    endif()
+    file(GLOB YELLOWDOCS_ICONS ${CMAKE_CURRENT_SOURCE_DIR}/resources/*.png)
+    if(YELLOWDOCS_ICONS)
+        install(FILES ${YELLOWDOCS_ICONS} DESTINATION data/YellowDocs)
+    endif()
+endif()

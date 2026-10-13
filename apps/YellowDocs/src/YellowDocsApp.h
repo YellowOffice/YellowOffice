@@ -3,6 +3,7 @@
 
 #include <Application.h>
 #include <String.h>
+#include <vector>
 
 #include <YellowCommon/Defines.h>
 
@@ -34,21 +35,14 @@ public:
     YellowDocsWindow* GetFrontWindow() const;
     size_t GetWindowCount() const;
 
-    // Settings
-    void LoadSettings();
-    void SaveSettings();
-
 private:
-    // Message constants
     static const uint32 kMsgNewDocument;
     static const uint32 kMsgOpenDocument;
     static const uint32 kMsgCloseAll;
     static const uint32 kMsgAbout;
     static const uint32 kMsgQuit;
 
-    // Application state
-    BString fSettingsPath;
-    bool fFirstRun;
+    std::vector<YellowDocsWindow*> fWindows;
 };
 
 #endif // YELLOW_DOCS_APP_H

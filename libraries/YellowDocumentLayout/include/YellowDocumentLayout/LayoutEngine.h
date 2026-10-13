@@ -8,6 +8,16 @@
 #include <vector>
 
 #include <YellowCommon/Defines.h>
+#include <YellowDocumentLayout/LayoutTypes.h>
+#include <YellowDocumentLayout/TextLayouter.h>
+#include <YellowDocumentLayout/ParagraphLayouter.h>
+#include <YellowDocumentLayout/PageLayouter.h>
+#include <YellowDocumentLayout/SelectionManager.h>
+#include <YellowDocumentLayout/CaretManager.h>
+#include <YellowDocumentLayout/HitTester.h>
+#include <YellowDocumentLayout/RenderContext.h>
+
+class BView;
 
 namespace YellowDocumentCore {
     class YellowDocument;
@@ -16,14 +26,12 @@ namespace YellowDocumentCore {
 
 namespace YellowDocumentLayout {
 
-// Forward declarations
-class TextLayouter;
-class ParagraphLayouter;
-class PageLayouter;
-class SelectionManager;
-class CaretManager;
-class HitTester;
-class RenderContext;
+using YellowDocumentCore::DocumentNode;
+using YellowDocumentCore::DocumentPosition;
+using YellowDocumentCore::DocumentRange;
+using YellowDocumentCore::ParagraphNode;
+using YellowDocumentCore::SectionNode;
+using YellowDocumentCore::YellowDocument;
 
 /**
  * Layout region represents a rectangular area in the document
@@ -46,7 +54,7 @@ public:
     float top;
     float right;
     float bottom;
-    
+
     bool IsValid() const;
     bool Contains(const BPoint& point) const;
     bool Intersects(const LayoutRegion& other) const;
@@ -89,17 +97,17 @@ public:
 };
 
 /**
- * Main layout engine class
+ * Main layout engine: owns the layout cache and component objects.
  */
 class LayoutEngine {
 public:
-    LayoutEngine(YellowDocumentCore::YellowDocument* document);
+    explicit LayoutEngine(YellowDocument* document);
     ~LayoutEngine();
 
     // Document access
-    YellowDocumentCore::YellowDocument* GetDocument();
-    const YellowDocumentCore::YellowDocument* GetDocument() const;
-    void SetDocument(YellowDocumentCore::YellowDocument* document);
+    YellowDocument* GetDocument();
+    const YellowDocument* GetDocument() const;
+    void SetDocument(YellowDocument* document);
 
     // Layout components
     TextLayouter* GetTextLayouter();
@@ -109,18 +117,22 @@ public:
     CaretManager* GetCaretManager();
     HitTester* GetHitTester();
     RenderContext* GetRenderContext();
+    FontCache* GetFontCache();
 
     // Layout operations
     void LayoutDocument();
     void LayoutDocument(const LayoutPass& pass);
-    void LayoutNode(YellowDocumentCore::DocumentNode* node);
-    void LayoutRange(const YellowDocumentCore::DocumentRange& range);
+    void LayoutNode(DocumentNode* node);
+    void LayoutRange(const DocumentRange& range);
 
     // Invalidation
     void InvalidateLayout();
-    void InvalidateNode(YellowDocumentCore::DocumentNode* node);
-    void InvalidateRange(const YellowDocumentCore::DocumentRange& range);
+    void InvalidateNode(DocumentNode* node);
+    void InvalidateRange(const DocumentRange& range);
     void InvalidateRegion(const LayoutRegion& region);
+
+    /// True when the cache is valid; performs layout if stale.
+    bool EnsureLayout();
 
     // Viewport
     void SetViewportSize(const BSize& size);
@@ -135,27 +147,45 @@ public:
 
     // Rendering
     void RenderDocument(BView* view, const BRect& updateRect);
-    void RenderNode(BView* view, YellowDocumentCore::DocumentNode* node, const BRect& bounds);
+    void RenderNode(BView* view, DocumentNode* node, const BRect& bounds);
 
     // Hit testing
-    YellowDocumentCore::DocumentNode* HitTest(const BPoint& point);
-    YellowDocumentCore::DocumentPosition HitTestPosition(const BPoint& point);
+    DocumentNode* HitTest(const BPoint& point);
+    DocumentPosition HitTestPosition(const BPoint& point);
 
-    // Coordinate conversion
+    // Coordinate conversion (document points <-> view points)
     BPoint DocumentToView(const BPoint& documentPoint) const;
     BPoint ViewToDocument(const BPoint& viewPoint) const;
     BRect DocumentToView(const BRect& documentRect) const;
     BRect ViewToDocument(const BRect& viewRect) const;
 
-    // Document dimensions
+    // Document dimensions (unscaled document points)
     BSize GetDocumentSize() const;
     BSize GetPageSize() const;
     int32 GetPageCount() const;
 
+    // Layout cache access (used by components and the canvas)
+    const std::vector<ParagraphLayout>& GetParagraphs() const;
+    std::vector<ParagraphLayout>& GetParagraphs();
+    const std::vector<PlacedImage>& GetImages() const;
+    std::vector<PlacedImage>& GetImages();
+    const std::vector<PlacedTable>& GetTables() const;
+    std::vector<PlacedTable>& GetTables();
+    const std::vector<PageInfo>& GetPages() const;
+    std::vector<PageInfo>& GetPages();
+
+    const ParagraphLayout* GetParagraphLayout(ParagraphNode* paragraph) const;
+
+    /// Called by PageLayouter when layout finishes.
+    void FinishLayout(int32 pageCount, const BSize& documentSize);
+
+    SectionNode* GetSection() const;
+
 private:
-    YellowDocumentCore::YellowDocument* fDocument;
-    
-    // Layout components
+    YellowDocument* fDocument;
+
+    // Components
+    FontCache* fFontCache;
     TextLayouter* fTextLayouter;
     ParagraphLayouter* fParagraphLayouter;
     PageLayouter* fPageLayouter;
@@ -163,18 +193,20 @@ private:
     CaretManager* fCaretManager;
     HitTester* fHitTester;
     RenderContext* fRenderContext;
-    
+
     // Viewport state
     BSize fViewportSize;
     float fZoomLevel;
     BPoint fScrollPosition;
-    
+
     // Layout cache
     bool fLayoutValid;
     BSize fDocumentSize;
-    
-    // Own the components
-    bool fOwnComponents;
+    int32 fPageCount;
+    std::vector<ParagraphLayout> fParagraphs;
+    std::vector<PlacedImage> fImages;
+    std::vector<PlacedTable> fTables;
+    std::vector<PageInfo> fPages;
 };
 
 } // namespace YellowDocumentLayout

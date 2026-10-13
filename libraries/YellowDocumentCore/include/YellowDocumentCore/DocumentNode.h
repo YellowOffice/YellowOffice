@@ -14,7 +14,8 @@ class DocumentNode;
 class YellowDocument;
 
 /**
- * DocumentPosition represents a position in the document
+ * DocumentPosition represents a position in the document: a node plus a
+ * character offset within that node's text.
  */
 class DocumentPosition {
 public:
@@ -38,13 +39,24 @@ public:
     bool IsValid() const;
     void Invalidate();
 
+    /**
+     * Returns the next/previous caret position in document order, moving
+     * across run and paragraph boundaries. Returns invalid position at the
+     * document edges.
+     */
+    DocumentPosition NextPosition() const;
+    DocumentPosition PreviousPosition() const;
+
 private:
     DocumentNode* fNode;
     int32 fOffset;
+
+    // Tree-order helpers
+    static int CompareInTree(const DocumentPosition& a, const DocumentPosition& b);
 };
 
 /**
- * DocumentRange represents a range in the document
+ * DocumentRange represents a range in the document (start <= end).
  */
 class DocumentRange {
 public:
@@ -59,6 +71,9 @@ public:
     const DocumentPosition& GetEnd() const;
     void SetStart(const DocumentPosition& start);
     void SetEnd(const DocumentPosition& end);
+
+    /// Swaps start/end if needed so that start <= end.
+    void Normalize();
 
     bool IsValid() const;
     bool IsCollapsed() const;
@@ -89,19 +104,23 @@ enum NodeType {
 };
 
 /**
- * Base class for all document nodes
+ * Base class for all document nodes.
+ *
+ * Ownership: a parent owns its children (destructor deletes them).
+ * Document association: SetDocument() records the owning YellowDocument on
+ * the whole subtree; GetDocument() returns it.
  */
 class DocumentNode {
 public:
     DocumentNode(NodeType type);
     virtual ~DocumentNode();
 
-    NodeType GetType() const;
-    
+    virtual NodeType GetType() const;
+
     // Hierarchy
     DocumentNode* GetParent() const;
     void SetParent(DocumentNode* parent);
-    
+
     size_t GetChildCount() const;
     DocumentNode* GetChild(size_t index) const;
     void AddChild(DocumentNode* child);
@@ -109,31 +128,36 @@ public:
     void RemoveChild(size_t index);
     void RemoveChild(DocumentNode* child);
     void RemoveAllChildren();
-    
+
     // Find operations
     size_t GetIndexOf(const DocumentNode* child) const;
     bool Contains(const DocumentNode* child) const;
-    
+
     // Document access
     virtual YellowDocument* GetDocument();
     virtual const YellowDocument* GetDocument() const;
+    virtual void SetDocument(YellowDocument* document);
+    YellowDocument* GetOwningDocument() const;
 
     // Text operations (for text-containing nodes)
     virtual BString GetText() const;
     virtual void SetText(const BString& text);
     virtual int32 GetTextLength() const;
-    
+
     // Position operations
     virtual DocumentPosition GetStartPosition() const;
     virtual DocumentPosition GetEndPosition() const;
     virtual DocumentPosition GetPositionAt(int32 offset) const;
-    
+
     // Clone
     virtual DocumentNode* Clone() const = 0;
 
 protected:
+    void PropagateDocument(YellowDocument* document);
+
     NodeType fType;
     DocumentNode* fParent;
+    YellowDocument* fDocument;
     std::vector<DocumentNode*> fChildren;
 };
 

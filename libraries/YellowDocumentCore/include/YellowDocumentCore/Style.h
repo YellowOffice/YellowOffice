@@ -6,7 +6,7 @@
 #include <GraphicsDefs.h>
 #include <vector>
 
-#include "Defines.h"
+#include <YellowCommon/Defines.h>
 
 namespace YellowDocumentCore {
 

@@ -1,116 +1,34 @@
-# YellowDocs Package Information for Haiku Package Manager
-# This file defines the package metadata for the YellowDocs application
-
-# Package name
-name = YellowDocs
-
-# Package version (follows semantic versioning)
-version = 0.1.0
-
-# Package revision (incremental for same version)
-revision = 1
-
-# Package architecture (any = works on all architectures)
-architecture = any
-
-# Package vendor
-vendor = YellowOffice Team
-
-# Package URL
-url = https://github.com/YellowOffice/YellowOffice
-
-# Package license
-license = MIT
-
-# Package copyright
-copyright = "Copyright (c) 2024 YellowOffice Contributors"
-
-# Package summary (short description)
-summary = "YellowOffice word processor and document editor"
-
-# Package description (long description)
-description = "YellowDocs is a full-featured word processor and document editor for Haiku OS. It supports rich text editing, paragraph and character formatting, styles, tables, images, and multiple document formats including native YDF, Markdown, and OpenDocument Format (ODF)."
-
-# Package provides (capabilities this package provides)
-provides = {
-    cmd:YellowDocs = 0.1.0
-    app:YellowDocs
-    mime:application/x-vnd.yellowdocs
-    mime:text/x-yellowdocs
+# YellowDocs package description (Haiku "package" tool format).
+# See: https://www.haiku-os.org/docs/api/packages_building_packages.html
+name                  YellowDocs
+version               0.1.0-1
+architecture          x86_64
+summary               "YellowOffice word processor and document editor"
+description           "YellowDocs is a word processor for Haiku OS.
+It edits rich text with paragraph and character formatting,
+and imports/exports the native Yellow Document Format (YDF),
+Markdown, plain text, and OpenDocument Text (ODF)."
+vendor                "YellowOffice Team"
+packager              "YellowOffice Contributors"
+copyrights {
+      "Copyright (c) 2024 YellowOffice Contributors"
 }
-
-# Package requires (dependencies)
-requires = {
-    haiku = r1~beta4
-    libbe.so
-    libtracker.so
-    libbnetapi.so
-    libz.so
-    lib:libYellowDocumentCore.so = 0.1.0
-    lib:libYellowDocumentLayout.so = 0.1.0
-    lib:libYellowImportExport.so = 0.1.0
-    lib:libYellowUI.so = 0.1.0
-    lib:libYellowCommon.so = 0.1.0
+licenses {
+      "MIT"
 }
-
-# Package supplies (files and directories this package provides)
-supplies = {
-    # Application binary
-    bin/YellowDocs
-    
-    # Application resources
-    app/YellowDocs/resources
-    
-    # Libraries
-    lib/YellowOffice/libYellowCommon.so
-    lib/YellowOffice/libYellowDocumentCore.so
-    lib/YellowOffice/libYellowDocumentLayout.so
-    lib/YellowOffice/libYellowUI.so
-    lib/YellowOffice/libYellowImportExport.so
-    
-    # MIME type database
-    data/mime/ydf
-    data/mime/YellowDocs
-    
-    # Documentation
-    documentation/YellowDocs
+urls {
+      "https://github.com/YellowOffice/YellowOffice"
 }
-
-# Package conflicts (packages that cannot be installed together)
-conflicts = {
+source-urls {
+      "https://github.com/YellowOffice/YellowOffice"
 }
-
-# Package replaces (packages this one replaces)
-replaces = {
+provides {
+      cmd:YellowDocs = 0.1.0
+      app:YellowDocs = 0.1.0
 }
-
-# Package freshen (packages this one updates)
-freshen = {
-}
-
-# Package copyright files
-copyrights = {
-    LICENSE
-}
-
-# Package source URL
-source_url = https://github.com/YellowOffice/YellowOffice
-
-# Package checksum (will be calculated during packaging)
-checksum = none
-
-# Package size (will be calculated during packaging)
-package_size = none
-
-# Package compressed size (will be calculated during packaging)
-compressed_size = none
-
-# Package flags
-flags = {
-}
-
-# Package build info
-build = {
-    compatibility = haiku
-    base_url = https://github.com/YellowOffice/YellowOffice/releases
+requires {
+      haiku >= r1~beta4
+      lib:libbe.so
+      lib:libtracker.so
+      lib:libz.so
 }
