@@ -1,14 +1,17 @@
 # YellowOffice Git Ignore
-
-# Build directories
-build/
-dist/
-
 # IDE specific files
 .idea/
 .vs/
 *.swp
 *.swo
+
+# Build outputs (build/haiku-stub is source and IS tracked)
+build/host-build/
+build/haiku/
+dist/
+
+# Python
+scripts/__pycache__/
 
 # Haiku specific
 *.o
