@@ -16,7 +16,7 @@ public:
 	virtual void SetText(const char* string);
 	void SetValue(float value);
 	float Value() const;
-	void Update(float delta);
+	virtual void Update(float delta, const char* text = NULL, const char* trailingText = NULL);
 	void Reset(const char* label = NULL, const char* trailing = NULL);
 	void SetTrailingText(const char* text);
 	void HideBarText(bool hide);

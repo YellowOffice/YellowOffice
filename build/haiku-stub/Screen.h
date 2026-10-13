@@ -8,20 +8,13 @@
 
 class BWindow;
 
-enum screen_id {
-	B_MAIN_SCREEN_ID = -1,
-	B_NO_SCREEN_ID = -2,
-	B_ALL_SCREENS = -3,
-};
-
 class BScreen {
 public:
-	BScreen();
-	explicit BScreen(BWindow* window);
-	explicit BScreen(screen_id id);
+	BScreen(screen_id id = B_MAIN_SCREEN_ID);
+	BScreen(BWindow* window);
 	~BScreen();
 
-	BRect Frame() const;
+	BRect Frame();
 	rgb_color ColorAt(int32 x, int32 y);
 	status_t SetDesktopColor(rgb_color color);
 	status_t WaitForRetrace(bigtime_t* period = NULL) const;

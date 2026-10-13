@@ -548,12 +548,19 @@ void YellowDocsWindow::MessageReceived(BMessage* message)
         }
 
         case B_SAVE_REQUESTED: {
-            entry_ref ref;
-            if (message->FindRef("refs", &ref) == B_OK) {
-                BEntry entry(&ref);
+            // Save notifications carry the target directory in "directory"
+            // (entry_ref) and the typed file name in "name" (string).
+            entry_ref dirRef;
+            BString name;
+            if (message->FindRef("directory", &dirRef) == B_OK
+                && message->FindString("name", &name) == B_OK
+                && name.Length() > 0) {
+                BEntry entry(&dirRef);
                 BPath path;
                 if (entry.GetPath(&path) == B_OK && path.Path()) {
                     fDocumentPath = path.Path();
+                    fDocumentPath += "/";
+                    fDocumentPath += name;
                     SaveDocument();
                 }
             }

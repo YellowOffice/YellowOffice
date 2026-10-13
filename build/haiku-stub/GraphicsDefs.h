@@ -23,6 +23,10 @@ inline rgb_color make_color(uint8 r, uint8 g, uint8 b, uint8 a = 255) {
 
 #define make_rgb_color make_color
 
+// Screen ID (real Haiku defines this in GraphicsDefs.h).
+struct screen_id { int32 id; };
+extern const struct screen_id B_MAIN_SCREEN_ID;
+
 enum color_space {
 	B_NO_COLOR_SPACE = 0x00000000,
 	B_RGB32 = 0x14,
@@ -109,6 +113,8 @@ struct tuned_font_info {
 struct pattern {
 	uint8 data[8];
 };
+
+extern const pattern B_SOLID_HIGH;
 
 struct gradient_data {
 	int32 angle;

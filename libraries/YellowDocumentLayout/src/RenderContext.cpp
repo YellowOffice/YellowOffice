@@ -34,7 +34,7 @@ void RenderContext::ApplyTextStyle(BView* view, const TextStyle& style)
     else if (style.bold) face = B_BOLD_FACE;
     else if (style.italic) face = B_ITALIC_FACE;
     font.SetFace(face);
-    view->SetFont(font);
+    view->SetFont(&font);
     view->SetHighColor(style.textColor);
 }
 
@@ -188,7 +188,7 @@ void RenderContext::RenderImage(BView* view, const PlacedImage& image, const BRe
     BFont font;
     view->GetFont(&font);
     font.SetSize(10.0f);
-    view->SetFont(font);
+    view->SetFont(&font);
     view->SetHighColor(100, 100, 100, 255);
     BPoint textPoint(viewRect.left + 6, viewRect.top + 14);
     view->DrawString(label.String(), textPoint);

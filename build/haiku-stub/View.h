@@ -16,6 +16,21 @@ class BWindow;
 class BLayout;
 class BBitmap;
 class BScrollView;
+class BPolygon;
+class BRegion;
+
+// mouse transit (real Haiku defines these in View.h)
+enum {
+	B_ENTERED_VIEW = 0,
+	B_INSIDE_VIEW,
+	B_EXITED_VIEW,
+	B_OUTSIDE_VIEW
+};
+
+// set font mask (subset used by the real B_FONT_ALL default)
+enum {
+	B_FONT_ALL = 0x000001FF
+};
 
 class BView : public BHandler {
 public:
@@ -28,7 +43,7 @@ public:
 	virtual void Draw(BRect updateRect);
 	virtual void MouseDown(BPoint where);
 	virtual void MouseUp(BPoint where);
-	virtual void MouseMoved(BPoint where, uint32 transit, const BMessage* dragMessage);
+	virtual void MouseMoved(BPoint where, uint32 code, const BMessage* dragMessage);
 	virtual void KeyDown(const char* bytes, int32 numBytes);
 	virtual void KeyUp(const char* bytes, int32 numBytes);
 	virtual void Pulse();
@@ -55,11 +70,9 @@ public:
 	void SetPenSize(float size);
 	float PenSize() const;
 
-	void FillRect(BRect rect);
-	void FillRect(BRect rect, pattern p);
-	void FillRect(BRect rect, uint32 invertMode);
-	void StrokeRect(BRect rect);
-	void StrokeLine(BPoint from, BPoint to);
+	void FillRect(BRect rect, pattern p = B_SOLID_HIGH);
+	void StrokeRect(BRect rect, pattern p = B_SOLID_HIGH);
+	void StrokeLine(BPoint from, BPoint to, pattern p = B_SOLID_HIGH);
 	void DrawString(const char* string);
 	void DrawString(const char* string, int32 length);
 	void DrawString(const char* string, BPoint origin);
@@ -68,10 +81,11 @@ public:
 	void DrawBitmap(const BBitmap* bitmap, BPoint at);
 	void DrawBitmap(const BBitmap* bitmap, BRect srcRect, BRect dstRect);
 	void InvertRect(BRect rect);
-	void FillPolygon(const void* points, int32 numPoints, bool closed = false);
+	void FillPolygon(const BPoint* pointArray, int32 numPoints,
+		pattern p = B_SOLID_HIGH);
 
-	void SetFont(const BFont* font);
-	void SetFont(const BFont& font);
+	// Real Haiku has only the pointer overload (plus a mask parameter).
+	void SetFont(const BFont* font, uint32 mask = B_FONT_ALL);
 	void GetFont(BFont* font) const;
 	float StringWidth(const char* string) const;
 	float StringWidth(const BString& string) const;
@@ -118,11 +132,13 @@ public:
 	int32 CountChildren() const;
 	BView* ChildAt(int32 index) const;
 	void SetViewColor(BRect rect, rgb_color color);
-	void ScrollBy(BPoint offset);
+	void ScrollBy(float dh, float dv);
+	void ScrollTo(float x, float y);
+	virtual void ScrollTo(BPoint where);
 	void MakeFocus(bool focused = true);
 	bool IsFocus() const;
-	void SetMouseEventMask(uint32 flags);
-	void Sync();
+	void SetMouseEventMask(uint32 mask, uint32 options = 0);
+	void Sync() const;
 	void Update();
 
 	enum {
