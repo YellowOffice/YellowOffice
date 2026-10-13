@@ -322,12 +322,11 @@ void DocumentCanvas::CopyToClipboard()
     BString text = selection->GetSelectedText(fDocument);
     if (text.IsEmpty()) return;
 
-    if (!be_clipboard) return;
-    be_clipboard->Lock();
+    if (!be_clipboard->Lock()) return;
     be_clipboard->Clear();
-    BMessage message;
-    message.AddString("data", text);
-    be_clipboard->AddData(B_TEXT_FLAVOR, &message);
+    BMessage* clip = be_clipboard->Data();
+    if (clip)
+        clip->AddData(B_TEXT_FLAVOR, B_MIME_TYPE, text.String(), text.Length());
     be_clipboard->Commit();
     be_clipboard->Unlock();
 }
@@ -341,11 +340,12 @@ void DocumentCanvas::CutToClipboard()
 
 void DocumentCanvas::PasteFromClipboard()
 {
-    if (!be_clipboard) return;
-    be_clipboard->Lock();
-    void* data = nullptr;
-    size_t length = 0;
-    if (be_clipboard->FindData(B_TEXT_FLAVOR, &data, &length) == B_OK && data) {
+    if (!be_clipboard->Lock()) return;
+    BMessage* clip = be_clipboard->Data();
+    const void* data = NULL;
+    ssize_t length = 0;
+    if (clip && clip->FindData(B_TEXT_FLAVOR, B_MIME_TYPE, &data, &length) == B_OK
+        && data && length > 0) {
         BString text;
         text.SetTo((const char*)data, (int32)length);
         be_clipboard->Unlock();

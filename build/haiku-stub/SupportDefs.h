@@ -39,6 +39,16 @@ typedef uint32 type_code;
 typedef uint32 node_flavor;
 typedef uint32 menu_layout;
 
+// Standard type codes from real Haiku SupportDefs.h (subset).
+// Note: B_ANY_TYPE lives in FSDefs.h (= 0, node flavor), not here.
+enum {
+	B_BOOL_TYPE = 'BOOL',
+	B_MIME_TYPE = 'MIME',
+	B_RAW_TYPE = 'RAWT',
+	B_REF_TYPE = 'REFS',
+	B_STRING_TYPE = 'STRL',
+};
+
 enum {
 	B_OS_NAME_LENGTH = 64,
 	B_FILE_NAME_LENGTH = 1024,

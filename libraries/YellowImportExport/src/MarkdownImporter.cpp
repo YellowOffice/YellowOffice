@@ -31,7 +31,7 @@ void AppendInlineRuns(ParagraphNode* paragraph, const char* text, int32 length,
         if (!plain.IsEmpty()) {
             TextRunNode* run = new TextRunNode(plain, style);
             paragraph->AddChild(run);
-            plain.MakeEmpty();
+            plain.Truncate(0);
         }
     };
 

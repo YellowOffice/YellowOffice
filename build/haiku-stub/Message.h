@@ -14,7 +14,9 @@ class BMessage {
 public:
 	BMessage() : what(0) {}
 	explicit BMessage(uint32 aWhat) : what(aWhat) {}
-	BMessage(const BMessage& other) : what(other.what), fStrings(other.fStrings), fInt32s(other.fInt32s), fFloats(other.fFloats), fRefs(other.fRefs) {}
+	BMessage(const BMessage& other)
+		: what(other.what), fStrings(other.fStrings), fInt32s(other.fInt32s),
+		  fFloats(other.fFloats), fRefs(other.fRefs), fData(other.fData) {}
 	~BMessage() {}
 
 	BMessage& operator=(const BMessage& other) {
@@ -24,6 +26,7 @@ public:
 			fInt32s = other.fInt32s;
 			fFloats = other.fFloats;
 			fRefs = other.fRefs;
+			fData = other.fData;
 		}
 		return *this;
 	}
@@ -39,6 +42,20 @@ public:
 	status_t AddRef(const char* name, const entry_ref* ref) {
 		if (ref == NULL) return B_BAD_VALUE;
 		fRefs[name].push_back(*ref);
+		return B_OK;
+	}
+
+	// Real Haiku signatures:
+	// status_t AddData(const char* name, type_code type, const void* data,
+	//     ssize_t numBytes, bool isFixedSize = true, int32 count = 1);
+	status_t AddData(const char* name, type_code type, const void* data,
+			ssize_t numBytes, bool /*isFixedSize*/ = true,
+			int32 /*count*/ = 1) {
+		if (name == NULL || data == NULL || numBytes < 0) return B_BAD_VALUE;
+		DataBlob blob;
+		blob.type = type;
+		blob.bytes.assign((const char*)data, (const char*)data + numBytes);
+		fData[name].push_back(blob);
 		return B_OK;
 	}
 
@@ -75,6 +92,25 @@ public:
 		return B_OK;
 	}
 
+	// Real Haiku signatures:
+	// status_t FindData(const char* name, type_code type,
+	//     const void** data, ssize_t* numBytes) const;
+	status_t FindData(const char* name, type_code type, const void** data,
+			ssize_t* numBytes) const {
+		return FindData(name, type, 0, data, numBytes);
+	}
+	status_t FindData(const char* name, type_code type, int32 index,
+			const void** data, ssize_t* numBytes) const {
+		DataMap::const_iterator it = fData.find(name);
+		if (it == fData.end() || index < 0 || (size_t)index >= it->second.size())
+			return B_ENTRY_NOT_FOUND;
+		const DataBlob& blob = it->second[(size_t)index];
+		if (blob.type != type) return B_BAD_TYPE;
+		if (data) *data = blob.bytes.empty() ? (const void*)"" : (const void*)&blob.bytes[0];
+		if (numBytes) *numBytes = (ssize_t)blob.bytes.size();
+		return B_OK;
+	}
+
 	status_t GetInfo(const char* name, type_code* typeFound, int32* countFound = NULL) const {
 		std::map<std::string, std::vector<entry_ref> >::const_iterator refIt = fRefs.find(name);
 		if (refIt != fRefs.end()) {
@@ -108,10 +144,17 @@ public:
 	uint32 what;
 
 private:
+	struct DataBlob {
+		type_code type;
+		std::vector<char> bytes;
+	};
+	typedef std::map<std::string, std::vector<DataBlob> > DataMap;
+
 	std::map<std::string, std::vector<std::string> > fStrings;
 	std::map<std::string, std::vector<int32> > fInt32s;
 	std::map<std::string, std::vector<float> > fFloats;
 	std::map<std::string, std::vector<entry_ref> > fRefs;
+	DataMap fData;
 };
 
 #endif

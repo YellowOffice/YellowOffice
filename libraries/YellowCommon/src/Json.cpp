@@ -462,7 +462,7 @@ private:
 
     bool ParseString(BString* out) {
         if (!Expect('"')) return false;
-        out->MakeEmpty();
+        out->Truncate(0);
         while (fPos < fLength) {
             char c = fText[fPos++];
             if (c == '"') return true;

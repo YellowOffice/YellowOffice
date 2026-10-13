@@ -281,7 +281,7 @@ void YellowDocsWindow::NewDocument()
 {
     delete fDocument;
     fDocument = new YellowDocument();
-    fDocumentPath.MakeEmpty();
+    fDocumentPath.Truncate(0);
     if (fCanvas) fCanvas->SetDocument(fDocument);
     SetDocumentModified(false);
     UpdateTitle();
@@ -550,7 +550,7 @@ void YellowDocsWindow::MessageReceived(BMessage* message)
         case B_SAVE_REQUESTED: {
             entry_ref ref;
             if (message->FindRef("refs", &ref) == B_OK) {
-                BEntry entry(ref);
+                BEntry entry(&ref);
                 BPath path;
                 if (entry.GetPath(&path) == B_OK && path.Path()) {
                     fDocumentPath = path.Path();
@@ -563,7 +563,7 @@ void YellowDocsWindow::MessageReceived(BMessage* message)
         case B_REFS_RECEIVED: {
             entry_ref ref;
             if (message->FindRef("refs", &ref) == B_OK) {
-                BEntry entry(ref);
+                BEntry entry(&ref);
                 BPath path;
                 if (entry.GetPath(&path) == B_OK && path.Path()) {
                     LoadDocument(path.Path());

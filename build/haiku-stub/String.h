@@ -42,14 +42,6 @@ public:
 		if ((size_t)maxLength < len) len = (size_t)maxLength;
 		return Adopt(string, len);
 	}
-	status_t Adopt(const char* string, int32 maxLength) {
-		if (maxLength < 0) return B_BAD_VALUE;
-		Reserve((size_t)maxLength + 1);
-		if (string && maxLength > 0) memmove(fBuffer, string, (size_t)maxLength);
-		fBuffer[maxLength > 0 ? maxLength : 0] = '\0';
-		fLength = maxLength > 0 ? (size_t)maxLength : 0;
-		return B_OK;
-	}
 
 	const char* String() const { return fBuffer ? fBuffer : ""; }
 	const char* CharAt(int32 index) const {
@@ -119,7 +111,6 @@ public:
 		if (fBuffer) fBuffer[fLength] = '\0';
 		return B_OK;
 	}
-	void MakeEmpty() { Remove(0, fLength); }
 
 	status_t SetToFormat(const char* format, ...) {
 		va_list args;
@@ -219,6 +210,16 @@ public:
 	BString& operator<<(char c) { Append(c); return *this; }
 
 private:
+	// Real BString has no Adopt(const char*, int32); SetTo() copies inline.
+	status_t Adopt(const char* string, int32 maxLength) {
+		if (maxLength < 0) return B_BAD_VALUE;
+		Reserve((size_t)maxLength + 1);
+		if (string && maxLength > 0) memmove(fBuffer, string, (size_t)maxLength);
+		fBuffer[maxLength > 0 ? maxLength : 0] = '\0';
+		fLength = maxLength > 0 ? (size_t)maxLength : 0;
+		return B_OK;
+	}
+
 	status_t Reserve(size_t capacity) {
 		if (capacity <= fCapacity && fBuffer) return B_OK;
 		size_t newCap = fCapacity ? fCapacity : 32;

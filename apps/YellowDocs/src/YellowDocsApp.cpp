@@ -88,7 +88,7 @@ void YellowDocsApp::OpenNewDocument()
 void YellowDocsApp::OpenDocument(const entry_ref* ref)
 {
     if (!ref) return;
-    BEntry entry(*ref);
+    BEntry entry(ref);
     BPath path;
     if (entry.GetPath(&path) != B_OK || !path.Path()) return;
     OpenDocument(BString(path.Path()));

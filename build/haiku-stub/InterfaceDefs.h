@@ -189,4 +189,7 @@ struct color_table {
 	rgb_color selected_text;
 };
 
+// Standard clipboard flavor (real Haiku defines this in InterfaceDefs.h).
+#define B_TEXT_FLAVOR "text/plain"
+
 #endif

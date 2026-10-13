@@ -50,9 +50,10 @@ public:
 		fPath[0] = '\0';
 		SetTo(path, name);
 	}
-	explicit BEntry(const entry_ref& ref, bool = false) : fStatus(B_ERROR) {
+	// Real Haiku: BEntry(const entry_ref* ref, bool traverse = false)
+	explicit BEntry(const entry_ref* ref, bool traverse = false) : fStatus(B_ERROR) {
 		fPath[0] = '\0';
-		SetTo(ref);
+		if (ref != NULL) SetTo(ref, traverse);
 	}
 	virtual ~BEntry() {}
 
@@ -67,7 +68,12 @@ public:
 		fStatus = (lstat(fPath, &st) == 0) ? B_OK : B_ENTRY_NOT_FOUND;
 		return fStatus;
 	}
-	status_t SetTo(const entry_ref& ref, bool = false) { return SetTo(ref.name); }
+	// Simplified: uses ref.name only (no directory resolution).
+	status_t SetTo(const entry_ref* ref, bool traverse = false) {
+		if (ref == NULL) { fStatus = B_BAD_VALUE; return fStatus; }
+		(void)traverse;
+		return SetTo(ref->name);
+	}
 	status_t Unset() { fPath[0] = '\0'; fStatus = B_ERROR; return B_OK; }
 	status_t InitCheck() const { return fStatus; }
 	bool Exists() const {
